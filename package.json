@@ -38,6 +38,7 @@
   "devDependencies": {
     "@astrojs/check": "^0.9.6",
     "@astrojs/db": "^0.18.3",
+    "@astrojs/netlify": "^6.6.4",
     "@astrojs/sitemap": "^3.6.1",
     "@eslint/js": "^9.38.0",
     "@playwright/test": "^1.56.1",
