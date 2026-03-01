@@ -7,6 +7,9 @@ import { dasherize } from '../utils/dasherize';
 import { truncate } from '../utils/truncate';
 import starpodConfig from '../../starpod.config';
 
+const FEED_PARSE_RETRIES = 3;
+const FEED_PARSE_RETRY_DELAY_MS = 2000;
+
 export interface Show {
   title: string;
   description: string;
@@ -37,6 +40,28 @@ function resolveFeedUrl(feedUrl?: string) {
   return feedUrl ?? starpodConfig.rssFeed;
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function parseRssWithRetry<T = unknown>(rssFeed: string): Promise<T> {
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= FEED_PARSE_RETRIES; attempt++) {
+    try {
+      // @ts-expect-error
+      return (await parseFeed.parse(rssFeed)) as T;
+    } catch (error) {
+      lastError = error;
+      if (attempt < FEED_PARSE_RETRIES) {
+        await sleep(FEED_PARSE_RETRY_DELAY_MS);
+      }
+    }
+  }
+
+  throw lastError;
+}
+
 export async function getShowInfo(feedUrl?: string) {
   const rssFeed = resolveFeedUrl(feedUrl);
   const cachedShowInfo = showInfoCache.get(rssFeed);
@@ -44,8 +69,7 @@ export async function getShowInfo(feedUrl?: string) {
     return cachedShowInfo;
   }
 
-  // @ts-expect-error
-  const showInfo = (await parseFeed.parse(rssFeed)) as Show;
+  const showInfo = await parseRssWithRetry<Show>(rssFeed);
   showInfo.image = (await optimizeImage(showInfo.image, {
     height: 640,
     width: 640
@@ -85,8 +109,7 @@ export async function getAllEpisodes(feedUrl?: string) {
     )
   });
 
-  // @ts-expect-error
-  let feed = (await parseFeed.parse(rssFeed)) as Show;
+  let feed = await parseRssWithRetry<Show>(rssFeed);
   let items = parse(FeedSchema, feed).items;
 
   let episodes: Array<Episode> = await Promise.all(

@@ -24,8 +24,19 @@ import { getAllEpisodes, getShowInfo } from '../lib/rss';
 import { dasherize } from '../utils/dasherize';
 
 const feed = Astro.url.searchParams.get('feed') || Astro.url.searchParams.get('url') || undefined;
-const show = await getShowInfo(feed);
-const allEpisodes = await getAllEpisodes(feed);
+let show;
+let allEpisodes;
+
+try {
+  show = await getShowInfo(feed);
+  allEpisodes = await getAllEpisodes(feed);
+} catch {
+  const fallbackUrl = new URL('/', Astro.url);
+  if (feed) {
+    fallbackUrl.searchParams.set('feed', feed);
+  }
+  return Astro.redirect(fallbackUrl.toString());
+}
 const routeEpisode = Astro.params.episode;
 
 const episode = allEpisodes.find(
