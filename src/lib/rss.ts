@@ -31,29 +31,37 @@ export interface Episode {
   };
 }
 
-let showInfoCache: Show | null = null;
+const showInfoCache = new Map<string, Show>();
 
-export async function getShowInfo() {
-  if (showInfoCache) {
-    return showInfoCache;
+function resolveFeedUrl(feedUrl?: string) {
+  return feedUrl ?? starpodConfig.rssFeed;
+}
+
+export async function getShowInfo(feedUrl?: string) {
+  const rssFeed = resolveFeedUrl(feedUrl);
+  const cachedShowInfo = showInfoCache.get(rssFeed);
+  if (cachedShowInfo) {
+    return cachedShowInfo;
   }
 
   // @ts-expect-error
-  const showInfo = (await parseFeed.parse(starpodConfig.rssFeed)) as Show;
+  const showInfo = (await parseFeed.parse(rssFeed)) as Show;
   showInfo.image = (await optimizeImage(showInfo.image, {
     height: 640,
     width: 640
   })) as string;
 
-  showInfoCache = showInfo;
+  showInfoCache.set(rssFeed, showInfo);
   return showInfo;
 }
 
-let episodesCache: Array<Episode> | null = null;
+const episodesCache = new Map<string, Array<Episode>>();
 
-export async function getAllEpisodes() {
-  if (episodesCache) {
-    return episodesCache;
+export async function getAllEpisodes(feedUrl?: string) {
+  const rssFeed = resolveFeedUrl(feedUrl);
+  const cachedEpisodes = episodesCache.get(rssFeed);
+  if (cachedEpisodes) {
+    return cachedEpisodes;
   }
   let FeedSchema = object({
     items: array(
@@ -78,7 +86,7 @@ export async function getAllEpisodes() {
   });
 
   // @ts-expect-error
-  let feed = (await parseFeed.parse(starpodConfig.rssFeed)) as Show;
+  let feed = (await parseFeed.parse(rssFeed)) as Show;
   let items = parse(FeedSchema, feed).items;
 
   let episodes: Array<Episode> = await Promise.all(
@@ -122,6 +130,6 @@ export async function getAllEpisodes() {
       )
   );
 
-  episodesCache = episodes;
+  episodesCache.set(rssFeed, episodes);
   return episodes;
 }

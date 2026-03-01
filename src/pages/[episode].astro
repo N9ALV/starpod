@@ -23,26 +23,18 @@ import Layout from '../layouts/Layout.astro';
 import { getAllEpisodes, getShowInfo } from '../lib/rss';
 import { dasherize } from '../utils/dasherize';
 
-const show = await getShowInfo();
+const feed = Astro.url.searchParams.get('feed') || Astro.url.searchParams.get('url') || undefined;
+const show = await getShowInfo(feed);
+const allEpisodes = await getAllEpisodes(feed);
+const routeEpisode = Astro.params.episode;
 
-export async function getStaticPaths() {
-  const allEpisodes = await getAllEpisodes();
+const episode = allEpisodes.find(
+  (item) => item.episodeNumber === routeEpisode || item.episodeSlug === routeEpisode
+);
 
-  return allEpisodes.flatMap((episode) => {
-    return [
-      {
-        params: { episode: episode.episodeNumber },
-        props: { episode }
-      },
-      {
-        params: { episode: episode.episodeSlug },
-        props: { episode }
-      }
-    ];
-  });
+if (!episode) {
+  return Astro.redirect('/');
 }
-
-const { episode } = Astro.props;
 
 let Transcript;
 
@@ -55,6 +47,9 @@ if (episode.episodeNumber && episode.episodeNumber !== 'Bonus') {
 }
 
 const canonicalURL = new URL(`/${episode.episodeSlug}`, Astro.url);
+if (feed) {
+  canonicalURL.searchParams.set('feed', feed);
+}
 
 // DB queries removed for static builds; fallback to empty arrays
 type HostsGuest = { id: string; img: string | null; isHost: boolean; name: string };

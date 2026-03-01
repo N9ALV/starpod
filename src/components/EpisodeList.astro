@@ -8,9 +8,11 @@ import { dasherize } from '../utils/dasherize';
 export interface Props {
   episodes: Array<Episode>;
   show: Show;
+  feed?: string;
 }
 
-const { episodes, show } = Astro.props;
+const { episodes, show, feed } = Astro.props;
+const querySuffix = feed ? `?feed=${encodeURIComponent(feed)}` : '';
 ---
 
 {
@@ -45,7 +47,7 @@ const { episodes, show } = Astro.props;
 
                 <h2 class="text-light-text-heading my-2 text-lg font-bold dark:text-white">
                   <a
-                    href={`/${episode.episodeSlug}`}
+                    href={`/${episode.episodeSlug}${querySuffix}`}
                     style={
                       'view-transition-name: var(--should-vt); --vt-name: vt-' +
                       dasherize(episode.title)
@@ -70,7 +72,7 @@ const { episodes, show } = Astro.props;
 
                   <a
                     class="text-light-text-heading font-bold dark:text-white"
-                    href={`/${episode.episodeSlug}`}
+                    href={`/${episode.episodeSlug}${querySuffix}`}
                   >
                     Show notes
                   </a>
