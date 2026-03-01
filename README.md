@@ -169,3 +169,119 @@ your `starpod.config.ts` and RSS feed:
 - `/{episode-number}.html.md` - Alternative episode URL
 
 No configuration needed - it just works!
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js (version 18 or higher)
+- pnpm package manager
+
+### Installation
+
+Clone the repository and install dependencies:
+
+```bash
+git clone https://github.com/shipshapecode/starpod.git
+cd starpod
+pnpm install
+```
+
+### Development
+
+Start the development server:
+
+```bash
+pnpm run dev
+```
+
+This will start the Astro development server with hot reloading.
+
+### Building
+
+Build the project for production:
+
+```bash
+pnpm run build
+```
+
+This command runs type checking and builds the site with remote data fetching enabled.
+
+### Testing
+
+Run the test suite:
+
+```bash
+pnpm test
+```
+
+This includes both unit tests and end-to-end tests.
+
+### Deployment
+
+Starpod is configured for deployment on Netlify with server-side rendering (SSR).
+
+#### Netlify Deployment Steps
+
+1. Push your code to a Git repository (e.g., GitHub, GitLab)
+2. Connect your repository to Netlify
+3. Configure the build settings:
+   - **Build command**: `pnpm run build`
+   - **Publish directory**: `dist`
+4. Add environment variables in Netlify's dashboard (see Environment Variables section below)
+5. Deploy!
+
+#### Environment Variables
+
+The following environment variables can be set in your deployment platform:
+
+- `DISCORD_WEBHOOK`: URL for the Discord webhook used by the contact form (optional)
+
+### Dynamic Feed Support
+
+Starpod supports dynamic RSS feed overrides via query parameters. You can view episodes from different feeds by adding `?feed=` to any URL:
+
+```
+https://your-site.com/?feed=https://example.com/feed.xml
+https://your-site.com/episode-1?feed=https://another-feed.com/rss
+```
+
+**Notes:**
+- This feature allows users to explore content from multiple podcasts
+- Feed loading includes retry logic and error handling to prevent 500 errors
+- Performance may be slower due to external feed fetching
+- Invalid or inaccessible feeds will gracefully fall back to the default feed
+
+### Database Setup (Optional)
+
+If you want to use the guest management features:
+
+1. Create a Turso account
+2. Set up your database connection
+3. Run the seed script:
+
+```bash
+pnpm run db:seed
+```
+
+### Troubleshooting
+
+#### Build Issues
+
+- **Missing dependencies**: Ensure all packages are installed with `pnpm install`
+- **Netlify build failures**: Verify `@astrojs/netlify` is in your `package.json` dependencies
+- **Type errors**: Run `pnpm run lint` to check for linting issues
+- **Remote data fetching**: The build uses `--remote` flag; ensure RSS feeds are accessible
+
+#### Runtime Issues
+
+- **Contact form not working**: Check that `DISCORD_WEBHOOK` environment variable is set
+- **Dynamic feeds failing**: Verify the RSS URL is valid and publicly accessible
+- **Slow loading**: Dynamic feeds may take longer to load; this is expected behavior
+
+#### Common Errors
+
+- **500 errors on feed parameters**: This indicates feed loading failure; the app should fall back gracefully
+- **Build timeouts**: Large RSS feeds or slow external services may cause timeouts; consider caching strategies
+
+If you encounter issues not covered here, please check the [GitHub issues](https://github.com/shipshapecode/starpod/issues) or create a new issue.
