@@ -2,6 +2,7 @@
 import type { Show } from '../lib/rss';
 import Hosts from './Hosts.astro';
 import starpodConfig from '../../starpod.config';
+import { htmlToText } from 'html-to-text';
 
 interface Props {
   info?: Show;
@@ -11,7 +12,8 @@ const { info } = Astro.props;
 
 // Use feed data if available, fall back to static config
 const displayTitle = info?.title || starpodConfig.blurb || 'Podcast';
-const displayDescription = info?.description || starpodConfig.description || '';
+const rawDescription = info?.description || starpodConfig.description || '';
+const displayDescription = htmlToText(rawDescription, { wordwrap: false }).trim();
 const displayImage = info?.image || '';
 const displayAuthor = info?.author || '';
 

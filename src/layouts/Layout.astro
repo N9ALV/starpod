@@ -22,6 +22,10 @@ import '../styles/global.css';
 
 const show = await getShowInfo();
 
+// When a ?feed param drives a dynamic sidebar from index.astro,
+// hide the static sidebar to avoid duplication.
+const feedParam = Astro.url.searchParams.get('feed');
+
 export interface Props {
   /**
    * If defined, this will override the default canonical URL.
@@ -132,6 +136,7 @@ const description = Astro.props.description ?? starpodConfig.description;
       class="custom-scrollbar lg:fixed lg:inset-y-0 lg:left-0 lg:flex lg:w-112 lg:items-start lg:overflow-y-auto xl:w-120"
       transition:persist="sidenav"
     >
+      {!feedParam && (
       <div class="relative z-10 mx-auto lg:min-h-full lg:flex-auto">
         <div
           class="bg-light-card dark:bg-dark-card m-2 rounded-lg pt-10 pb-4 lg:pt-16 lg:pb-12"
@@ -162,9 +167,10 @@ const description = Astro.props.description ?? starpodConfig.description;
           <InfoCard />
         </div>
       </div>
+      )}
     </header>
     <main
-      class="bg-light-card dark:bg-dark-card mx-2 mb-2 rounded-lg lg:relative lg:ml-112 lg:min-h-screen xl:ml-120"
+      class={`bg-light-card dark:bg-dark-card mx-2 mb-2 rounded-lg lg:relative lg:min-h-screen ${feedParam ? '' : 'lg:ml-112 xl:ml-120'}`}
     >
       <div class="absolute top-4 right-4 z-30">
         <SearchButton client:load />
@@ -193,10 +199,12 @@ const description = Astro.props.description ?? starpodConfig.description;
         </div>
       </div>
     </main>
+    {!feedParam && (
     <footer class="block lg:hidden">
       <Hosts />
       <InfoCard />
     </footer>
+    )}
     <div id="audio-player">
       <Player client:only="preact" transition:persist="player" />
     </div>
