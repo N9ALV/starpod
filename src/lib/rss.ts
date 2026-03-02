@@ -167,7 +167,7 @@ export async function getAllEpisodes(feedUrl?: string) {
     items = (feed?.items ?? []) as typeof items;
   }
 
-  const episodes: Array<Episode> = (
+  const episodes = (
     await Promise.all(
       items
         .filter(
@@ -234,14 +234,14 @@ export async function getAllEpisodes(feedUrl?: string) {
               episodeThumbnail,
               published,
               audio
-            } satisfies Episode;
+            };
           } catch (err) {
             console.error('Failed to parse episode:', item?.title, err);
             return null;
           }
         })
     )
-  ).filter((ep): ep is Episode => ep !== null);
+  ).filter((ep): ep is Episode => ep !== null) as Episode[];
 
   episodesCache.set(rssFeed, episodes);
   return episodes;

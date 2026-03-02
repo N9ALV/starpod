@@ -1,5 +1,6 @@
 ---
-import { format } from 'date-fns';
+const formatDate = (ts: number) =>
+  new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(ts));
 import type { Episode } from '../lib/rss';
 
 interface Props {
@@ -33,7 +34,7 @@ const { episodes } = Astro.props;
           <p class="text-sm text-muted-foreground line-clamp-2">{episode.description}</p>
           {episode.published > 0 && (
             <p class="text-xs text-muted-foreground mt-1">
-              {format(new Date(episode.published), 'MMM d, yyyy')}
+              {formatDate(episode.published)}
             </p>
           )}
           {episode.audio?.src && (
