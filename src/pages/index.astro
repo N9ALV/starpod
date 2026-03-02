@@ -18,7 +18,13 @@ const [episodes, show] = await Promise.allSettled([
 const episodesArray = episodes.status === 'fulfilled' ? episodes.value : [];
 const showInfo = show.status === 'fulfilled' ? show.value : undefined;
 
+// EpisodeList needs a Show object for image fallback
+const showData = showInfo ?? { title: starpodConfig.blurb ?? 'Podcast', description: '', image: '', link: '' };
+
 const pageTitle = showInfo?.title ?? starpodConfig.blurb ?? 'Starpod';
+
+// Only pass feed param if it differs from the default config feed
+const feedParam = searchParams.get('feed') || undefined;
 ---
 
 <Layout title={pageTitle}>
@@ -30,7 +36,7 @@ const pageTitle = showInfo?.title ?? starpodConfig.blurb ?? 'Starpod';
         </aside>
       )}
       <div class={`w-full min-w-0`}>
-        <EpisodeList episodes={episodesArray} feed={feedUrl} />
+        <EpisodeList episodes={episodesArray} show={showData} feed={feedParam} />
       </div>
     </div>
   </div>
