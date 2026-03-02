@@ -5,7 +5,7 @@
 
 @theme {
   --background-image-dots-dark: url('/images/dots-dark.svg');
-  --background-image-dots-light: url('/images/dots-light.svg');
+  --background-image-dots-light: url('/images/dots-dark.svg');
   --background-image-gradient-light: background: radial-gradient(
       77% 77% at 50% 0%,
       #edecfc 0%,
