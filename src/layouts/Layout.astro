@@ -133,7 +133,9 @@ const description = Astro.props.description ?? starpodConfig.description;
     class="font-inter text-light-text-body dark:bg-dark-background dark:text-dark-text-body antialiased"
   >
     <header
-      class="custom-scrollbar lg:fixed lg:inset-y-0 lg:left-0 lg:flex lg:w-112 lg:items-start lg:overflow-y-auto xl:w-120"
+      class={feedParam
+        ? ''
+        : 'custom-scrollbar lg:fixed lg:inset-y-0 lg:left-0 lg:flex lg:w-112 lg:items-start lg:overflow-y-auto xl:w-120'}
       transition:persist="sidenav"
     >
       {!feedParam && (
