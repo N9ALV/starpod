@@ -11,13 +11,17 @@
       #edecfc 0%,
       rgba(237, 236, 252, 0) 100%
     );
+
+  /* UPDATED: top fade color -> #314080 */
   --background-image-gradient-dark: radial-gradient(
     77% 77% at 50% 0%,
-    #586984 0%,
-    rgba(88, 105, 132, 0) 100%
+    #314080 0%,
+    rgba(49, 64, 128, 0) 100%
   );
 
-  --color-dark-background: oklch(13.5% 0.025 273.2);
+  /* UPDATED: base background -> #000510 */
+  --color-dark-background: #000510;
+
   --color-dark-border: oklch(23.8% 0.04 266.76);
   --color-dark-button: oklch(21.57% 0.029 280.68);
   --color-dark-card: oklch(18.74% 0.024 280.08);
