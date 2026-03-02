@@ -1,87 +1,51 @@
 ---
-import FormattedDate from '../components/FormattedDate';
-import FullPlayButton from '../components/FullPlayButton';
-import UFOIllustration from '../components/illustrations/UFOIllustration.astro';
-import type { Episode, Show } from '../lib/rss';
-import { dasherize } from '../utils/dasherize';
+import { format } from 'date-fns';
+import type { Episode } from '../lib/rss';
 
-export interface Props {
-  episodes: Array<Episode>;
-  show: Show;
+interface Props {
+  episodes: Episode[];
   feed?: string;
 }
 
-const { episodes, show, feed } = Astro.props;
-const querySuffix = feed ? `?feed=${encodeURIComponent(feed)}` : '';
+const { episodes } = Astro.props;
 ---
 
-{
-  episodes.length === 0 ? (
-    <div class="flex flex-col items-center">
-      <div class="h-auto w-full max-w-80">
-        <UFOIllustration />
-      </div>
-
-      <p class="text-light-text-heading py-10 text-lg font-bold dark:text-white">
-        No episodes yet. Check back soon!
-      </p>
-    </div>
-  ) : (
-    <ul aria-label="EpisodeList">
-      {episodes.map((episode) => {
-        return (
-          <li class="dark:border-dark-border border-b">
-            <div class="flex w-full flex-col py-12 lg:flex-row">
-              <img
-                alt={`${episode.title} - episode art`}
-                aria-hidden="true"
-                class="mb-3 block h-20 w-20 rounded-md lg:mr-6"
-                height={80}
-                loading="lazy"
-                src={episode.episodeThumbnail ?? show.image}
-                width={80}
-              />
-
-              <div class="flex flex-col">
-                <FormattedDate date={new Date(episode.published)} />
-
-                <h2 class="text-light-text-heading my-2 text-lg font-bold dark:text-white">
-                  <a
-                    href={`/${episode.episodeSlug}${querySuffix}`}
-                    style={
-                      'view-transition-name: var(--should-vt); --vt-name: vt-' +
-                      dasherize(episode.title)
-                    }
-                  >
-                    {episode.episodeNumber}: {episode.title}
-                  </a>
-                </h2>
-
-                <p class="mb-5">{episode.description}</p>
-
-                <div class="flex items-center gap-6 text-sm">
-                  <FullPlayButton
-                    client:visible
-                    episode={{
-                      audio: episode.audio,
-                      episodeNumber: episode.episodeNumber,
-                      id: episode.id,
-                      title: episode.title
-                    }}
-                  />
-
-                  <a
-                    class="text-light-text-heading font-bold dark:text-white"
-                    href={`/${episode.episodeSlug}${querySuffix}`}
-                  >
-                    Show notes
-                  </a>
-                </div>
-              </div>
-            </div>
-          </li>
-        );
-      })}
-    </ul>
-  )
-}
+{episodes.length === 0 ? (
+  <p class="text-center text-muted-foreground py-16">No episodes found.</p>
+) : (
+  <ul class="flex flex-col gap-4">
+    {episodes.map((episode) => (
+      <li class="flex gap-4 rounded-lg bg-card shadow-sm p-4 hover:shadow-md transition-shadow">
+        {episode.episodeImage && (
+          <img
+            src={episode.episodeImage}
+            alt={episode.title}
+            class="h-16 w-16 shrink-0 rounded object-cover"
+            loading="lazy"
+            onerror="this.style.display='none'"
+          />
+        )}
+        <div class="flex flex-col gap-1 min-w-0">
+          {episode.episodeNumber && (
+            <span class="text-xs font-medium text-primary">Ep {episode.episodeNumber}</span>
+          )}
+          <h3 class="font-semibold text-card-foreground truncate">{episode.title}</h3>
+          <p class="text-sm text-muted-foreground line-clamp-2">{episode.description}</p>
+          {episode.published > 0 && (
+            <p class="text-xs text-muted-foreground mt-1">
+              {format(new Date(episode.published), 'MMM d, yyyy')}
+            </p>
+          )}
+          {episode.audio?.src && (
+            <audio
+              controls
+              preload="none"
+              class="mt-2 w-full"
+              src={episode.audio.src}
+            />
+          )}
+        </div>
+      </li>
+    ))}
+  </ul>
+)}
