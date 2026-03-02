@@ -17,7 +17,7 @@
     rgba(88, 105, 132, 0) 100%
   );
 
-  --color-dark-background: oklch(13.5% 0.025 273.2);
+  --color-dark-background: #11121e;
   --color-dark-border: oklch(23.8% 0.04 266.76);
   --color-dark-button: oklch(21.57% 0.029 280.68);
   --color-dark-card: oklch(18.74% 0.024 280.08);
