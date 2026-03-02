@@ -6,22 +6,24 @@
 @theme {
   --background-image-dots-dark: url('/images/dots-dark.svg');
   --background-image-dots-light: url('/images/dots-dark.svg');
-  --background-image-gradient-light: background: radial-gradient(
-      77% 77% at 50% 0%,
-      #edecfc 0%,
-      rgba(237, 236, 252, 0) 100%
-    );
 
-  /* UPDATED: top fade color -> #314080 */
+  --background-image-gradient-light: radial-gradient(
+    77% 77% at 50% 0%,
+    #edecfc 0%,
+    rgba(237, 236, 252, 0) 100%
+  );
+
+  /* UPDATED: top fade color → #314080 */
   --background-image-gradient-dark: radial-gradient(
     77% 77% at 50% 0%,
     #314080 0%,
     rgba(49, 64, 128, 0) 100%
   );
 
-  /* UPDATED: base background -> #000510 */
+  /* UPDATED: base background → #000510 */
   --color-dark-background: #000510;
 
+  /* Dark mode */
   --color-dark-border: oklch(23.8% 0.04 266.76);
   --color-dark-button: oklch(21.57% 0.029 280.68);
   --color-dark-card: oklch(18.74% 0.024 280.08);
@@ -31,6 +33,8 @@
   --color-dark-input-border-focused: oklch(45.84% 0.078 281.04);
   --color-dark-player: oklch(22.61% 0.035 280.78);
   --color-dark-text-body: oklch(61.91% 0.019 264.42);
+
+  /* Light mode */
   --color-light-card: oklch(97.65% 0.005 274.97);
   --color-light-icon: oklch(67.65% 0.043 285.21);
   --color-light-input-bg: oklch(100% 0 0);
