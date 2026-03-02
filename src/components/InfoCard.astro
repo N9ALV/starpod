@@ -1,19 +1,48 @@
-<div
-  class="m-2 mb-2 rounded-lg bg-light-card px-4 py-12 sm:px-6 md:px-4 lg:px-16 dark:bg-dark-card"
->
-  <a class="animated-bottom-border block pt-5 after:mt-5" href="/about">
-    About</a
-  >
-  <a class="animated-bottom-border block pt-5 after:mt-5" href="/contact">
-    Contact
-  </a>
-  <a
-    class="animated-bottom-border block pt-5 after:mt-5"
-    href="https://whiskey.fund/"
-  >
-    Store
-  </a>
-  <a class="animated-bottom-border block pt-5 after:mt-5" href="/sponsor">
-    Become a sponsor
-  </a>
+---
+import type { Show } from '../lib/rss';
+import Hosts from './Hosts.astro';
+import starpodConfig from '../../starpod.config';
+
+interface Props {
+  info?: Show;
+}
+
+const { info } = Astro.props;
+
+// Use feed data if available, fall back to static config
+const displayTitle = info?.title || starpodConfig.blurb || 'Podcast';
+const displayDescription = info?.description || starpodConfig.description || '';
+const displayImage = info?.image || '';
+const displayAuthor = info?.author || '';
+
+// True when we're showing a third-party feed (not the local config feed)
+const isExternalFeed = !!info;
+---
+
+<div class="flex flex-col gap-6">
+  <div class="overflow-hidden rounded-lg bg-card shadow-md">
+    {displayImage && (
+      <div class="aspect-square w-full overflow-hidden">
+        <img
+          src={displayImage}
+          alt={displayTitle}
+          class="h-full w-full object-cover"
+          loading="lazy"
+          onerror="this.parentElement.style.display='none'"
+        />
+      </div>
+    )}
+    <div class="p-6">
+      <h1 class="text-2xl font-bold leading-tight">{displayTitle}</h1>
+      {displayAuthor && (
+        <p class="mt-2 text-sm font-medium text-primary">{displayAuthor}</p>
+      )}
+      {displayDescription && (
+        <p class="mt-4 text-sm leading-relaxed text-muted-foreground line-clamp-6">
+          {displayDescription}
+        </p>
+      )}
+    </div>
+  </div>
+  {!isExternalFeed && <Hosts />}
 </div>
