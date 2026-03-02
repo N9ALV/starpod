@@ -241,7 +241,7 @@ export async function getAllEpisodes(feedUrl?: string) {
           }
         })
     )
-  ).filter((ep): ep is Episode => ep !== null) as Episode[];
+  ).filter((ep) => ep !== null) as Episode[];
 
   episodesCache.set(rssFeed, episodes);
   return episodes;
