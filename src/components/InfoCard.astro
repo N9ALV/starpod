@@ -1,24 +1,24 @@
 ---
-import type { Show } from '../lib/rss';
-import Hosts from './Hosts.astro';
-import starpodConfig from '../../starpod.config';
 import { htmlToText } from 'html-to-text';
+
+import type { Show } from '../lib/rss';
+import starpodConfig from '../../starpod.config';
+import Hosts from './Hosts.astro';
 
 interface Props {
   info?: Show;
+  hideHosts?: boolean;
 }
 
-const { info } = Astro.props;
+const { hideHosts = false, info } = Astro.props;
 
-// Use feed data if available, fall back to static config
 const displayTitle = info?.title || starpodConfig.blurb || 'Podcast';
 const rawDescription = info?.description || starpodConfig.description || '';
-const displayDescription = htmlToText(rawDescription, { wordwrap: false }).trim();
+const displayDescription = htmlToText(rawDescription, {
+  wordwrap: false
+}).trim();
 const displayImage = info?.image || '';
 const displayAuthor = info?.author || '';
-
-// True when we're showing a third-party feed (not the local config feed)
-const isExternalFeed = !!info;
 ---
 
 <div class="flex flex-col gap-6">
@@ -46,5 +46,5 @@ const isExternalFeed = !!info;
       )}
     </div>
   </div>
-  {!isExternalFeed && <Hosts />}
+  {!hideHosts && <Hosts />}
 </div>

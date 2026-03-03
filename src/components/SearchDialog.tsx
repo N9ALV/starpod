@@ -1,9 +1,14 @@
 import type { JSX } from 'preact/jsx-runtime';
 import { useEffect, useState, useRef, useCallback } from 'preact/hooks';
 import { isSearchOpen } from './state';
+import { withFeedQuery } from '../lib/feed-source';
 import type { Episode } from '../lib/rss';
 
-export default function SearchDialog() {
+type SearchDialogProps = {
+  feed?: string;
+};
+
+export default function SearchDialog({ feed }: SearchDialogProps) {
   const [query, setQuery] = useState('');
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [filteredEpisodes, setFilteredEpisodes] = useState<Episode[]>([]);
@@ -13,11 +18,16 @@ export default function SearchDialog() {
 
   // Load episodes on mount
   useEffect(() => {
-    fetch('/api/episodes/search.json')
+    fetch(withFeedQuery('/api/episodes/search.json', feed))
       .then((res) => res.json())
       .then((data) => setEpisodes(data))
       .catch(console.error);
-  }, []);
+  }, [feed]);
+
+  const getEpisodeHref = useCallback(
+    (episodeSlug: string) => withFeedQuery(`/${episodeSlug}`, feed),
+    [feed]
+  );
 
   // Filter episodes based on query
   useEffect(() => {
@@ -81,12 +91,12 @@ export default function SearchDialog() {
           e.preventDefault();
           const selected = filteredEpisodes[selectedIndex];
           if (selected) {
-            window.location.href = `/${selected.episodeSlug}`;
+            window.location.href = getEpisodeHref(selected.episodeSlug);
           }
         }
       }
     },
-    [filteredEpisodes, selectedIndex]
+    [filteredEpisodes, getEpisodeHref, selectedIndex]
   );
 
   // Add global keyboard listener
@@ -164,7 +174,7 @@ export default function SearchDialog() {
             filteredEpisodes.map((episode, index) => (
               <a
                 key={episode.id}
-                href={`/${episode.episodeSlug}`}
+                href={getEpisodeHref(episode.episodeSlug)}
                 data-index={index}
                 class={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
                   index === selectedIndex

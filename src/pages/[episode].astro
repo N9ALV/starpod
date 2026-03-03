@@ -20,10 +20,16 @@ import PlayButton from '../components/player/PlayButton';
 import FullPlayButton from '../components/FullPlayButton';
 import UFOIllustration from '../components/illustrations/UFOIllustration.astro';
 import Layout from '../layouts/Layout.astro';
+import {
+  getRequestedFeed,
+  resolveFeedSource,
+  withFeedQuery
+} from '../lib/feed-source';
 import { getAllEpisodes, getShowInfo } from '../lib/rss';
 import { dasherize } from '../utils/dasherize';
 
-const feed = Astro.url.searchParams.get('feed') || Astro.url.searchParams.get('url') || undefined;
+const feedSource = resolveFeedSource(getRequestedFeed(Astro.url.searchParams));
+const feed = feedSource.resolvedUrl;
 let show;
 let allEpisodes;
 
@@ -32,8 +38,8 @@ try {
   allEpisodes = await getAllEpisodes(feed);
 } catch {
   const fallbackUrl = new URL('/', Astro.url);
-  if (feed) {
-    fallbackUrl.searchParams.set('feed', feed);
+  if (feedSource.queryValue) {
+    fallbackUrl.searchParams.set('feed', feedSource.queryValue);
   }
   return Astro.redirect(fallbackUrl.toString());
 }
@@ -44,7 +50,7 @@ const episode = allEpisodes.find(
 );
 
 if (!episode) {
-  return Astro.redirect('/');
+  return Astro.redirect(withFeedQuery('/', feedSource.queryValue));
 }
 
 let Transcript;
@@ -57,10 +63,10 @@ if (episode.episodeNumber && episode.episodeNumber !== 'Bonus') {
   }
 }
 
-const canonicalURL = new URL(`/${episode.episodeSlug}`, Astro.url);
-if (feed) {
-  canonicalURL.searchParams.set('feed', feed);
-}
+const canonicalURL = new URL(
+  withFeedQuery(`/${episode.episodeSlug}`, feedSource.queryValue),
+  Astro.url
+);
 
 // DB queries removed for static builds; fallback to empty arrays
 type HostsGuest = { id: string; img: string | null; isHost: boolean; name: string };
@@ -75,7 +81,10 @@ const title = `${episode.title} - ${show.title} - Episode ${episode.episodeNumbe
 <Layout
   canonicalURL={canonicalURL}
   description={episode.description}
+  feedQueryValue={feedSource.queryValue}
+  feedUrl={feedSource.resolvedUrl}
   imageUrl={episode.episodeImage}
+  show={show}
   title={title}
 >
   <Schema

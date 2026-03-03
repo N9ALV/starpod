@@ -15,16 +15,15 @@ import SearchButton from '../components/SearchButton';
 import SearchDialog from '../components/SearchDialog';
 import ShowArtwork from '../components/ShowArtwork.astro';
 
+import { getEmbedGateConfig } from '../lib/embed-gate';
 import { getShowInfo } from '../lib/rss';
+import type { Show } from '../lib/rss';
 import starpodConfig from 'starpod.config';
 
 import '../styles/global.css';
 
-const show = await getShowInfo();
-
-// When a ?feed param drives a dynamic sidebar from index.astro,
-// hide the static sidebar to avoid duplication.
-const feedParam = Astro.url.searchParams.get('feed');
+// Keep static left sidebar hidden by default.
+const showStaticSidebar = false;
 
 export interface Props {
   /**
@@ -32,11 +31,22 @@ export interface Props {
    */
   canonicalURL?: URL;
   description?: string;
+  feedQueryValue?: string;
+  feedUrl?: string;
   imageUrl?: string;
+  show?: Show;
   title: string;
 }
 
-const { imageUrl, title } = Astro.props;
+const { feedQueryValue, feedUrl, imageUrl, show: providedShow, title } =
+  Astro.props;
+const show = providedShow ?? (await getShowInfo(feedUrl));
+const currentFeedUrl = feedUrl ?? starpodConfig.rssFeed;
+const socialImage = imageUrl ?? show.image;
+const embedGateConfig = getEmbedGateConfig();
+const searchDialogPersistKey = feedQueryValue
+  ? `search-dialog:${encodeURIComponent(feedQueryValue)}`
+  : 'search-dialog:default';
 
 const canonicalURL =
   Astro.props.canonicalURL ?? new URL(Astro.url.pathname, Astro.site);
@@ -92,13 +102,13 @@ const description = Astro.props.description ?? starpodConfig.description;
     <meta content={description} name="twitter:description" />
 
     <!-- Image -->
-    <meta content={imageUrl ?? show.image} property="og:image" />
+    {socialImage && <meta content={socialImage} property="og:image" />}
     <meta content="summary" name="twitter:card" />
-    <meta content={imageUrl ?? show.image} name="twitter:image:src" />
+    {socialImage && <meta content={socialImage} name="twitter:image:src" />}
 
     <meta property="og:site_name" content={show.title} />
 
-    <link rel="preload" as="image" href={show.image} />
+    {socialImage && <link rel="preload" as="image" href={socialImage} />}
 
     <Font cssVariable="--astro-font-inter" preload />
 
@@ -111,7 +121,7 @@ const description = Astro.props.description ?? starpodConfig.description;
         about: starpodConfig.blurb,
         description: show.description,
         url: canonicalURL.toString(),
-        webFeed: starpodConfig.rssFeed,
+        webFeed: currentFeedUrl,
         author: {
           '@type': 'Organization',
           name: show.title,
@@ -126,19 +136,233 @@ const description = Astro.props.description ?? starpodConfig.description;
       }}
     />
 
+    <style is:inline>
+      .iqpod-gate {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0, 0, 0, 0.72);
+        backdrop-filter: blur(4px);
+        padding: 1rem;
+      }
+      .iqpod-gate__card {
+        width: min(420px, 100%);
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        background: #0f1426;
+        color: #e8ecff;
+        padding: 1rem;
+      }
+      .iqpod-gate__title {
+        margin: 0 0 0.5rem;
+        font-weight: 700;
+        font-size: 1rem;
+      }
+      .iqpod-gate__hint {
+        margin: 0 0 0.75rem;
+        color: #b7c0e6;
+        font-size: 0.9rem;
+      }
+      .iqpod-gate__row {
+        display: flex;
+        gap: 0.5rem;
+      }
+      .iqpod-gate__input {
+        flex: 1;
+        min-width: 0;
+        border: 1px solid #2a3451;
+        background: #0a1022;
+        color: #e8ecff;
+        border-radius: 8px;
+        padding: 0.55rem 0.7rem;
+      }
+      .iqpod-gate__button {
+        border: 0;
+        border-radius: 8px;
+        background: #5f7cd4;
+        color: #fff;
+        font-weight: 600;
+        padding: 0.55rem 0.85rem;
+        cursor: pointer;
+      }
+      .iqpod-gate__error {
+        margin-top: 0.55rem;
+        color: #ffb4b4;
+        font-size: 0.82rem;
+      }
+    </style>
+
     <slot name="head" />
     <ClientRouter />
   </head>
   <body
     class="font-inter text-light-text-body dark:bg-dark-background dark:text-dark-text-body antialiased"
   >
+    <div
+      id="iqpod-gate"
+      class="iqpod-gate"
+      aria-live="polite"
+      aria-modal="true"
+      data-config={JSON.stringify(embedGateConfig)}
+      hidden
+      role="dialog"
+    >
+      <div class="iqpod-gate__card">
+        <p class="iqpod-gate__title">Enter PIN to continue</p>
+        <p class="iqpod-gate__hint">This view is restricted unless embedded on an allowed parent domain.</p>
+        <div class="iqpod-gate__row">
+          <input id="iqpod-gate-input" class="iqpod-gate__input" type="password" placeholder="PIN" />
+          <button id="iqpod-gate-button" class="iqpod-gate__button" type="button">Unlock</button>
+        </div>
+        <div id="iqpod-gate-error" class="iqpod-gate__error" hidden>Invalid PIN</div>
+      </div>
+    </div>
+
+    <script is:inline>
+      (() => {
+        const gate = document.getElementById('iqpod-gate');
+        const pinInput = document.getElementById('iqpod-gate-input');
+        const unlockButton = document.getElementById('iqpod-gate-button');
+        const errorText = document.getElementById('iqpod-gate-error');
+
+        if (!gate || !pinInput || !unlockButton || !errorText) return;
+
+        let config;
+        try {
+          config = JSON.parse(gate.dataset.config || '{}');
+        } catch {
+          gate.hidden = true;
+          return;
+        }
+
+        const matchesOriginPattern = (origin, pattern) => {
+          const match = pattern
+            .trim()
+            .toLowerCase()
+            .match(/^(https?):\/\/([^/:]+)(?::(\d+))?$/);
+
+          if (!match) return false;
+
+          try {
+            const parsedOrigin = new URL(origin);
+            const hostname = parsedOrigin.hostname.toLowerCase();
+            const hostnamePattern = match[2];
+            const expectedPort = match[3] || '';
+
+            if (parsedOrigin.protocol.toLowerCase() !== `${match[1]}:`) {
+              return false;
+            }
+
+            if (expectedPort && parsedOrigin.port !== expectedPort) {
+              return false;
+            }
+
+            if (!expectedPort && parsedOrigin.port) {
+              return false;
+            }
+
+            if (hostnamePattern.startsWith('*.')) {
+              const suffix = hostnamePattern.slice(1);
+              return hostname.endsWith(suffix) && hostname !== suffix.slice(1);
+            }
+
+            return hostname === hostnamePattern;
+          } catch {
+            return false;
+          }
+        };
+
+        const hideGate = () => {
+          gate.hidden = true;
+          gate.style.display = 'none';
+          errorText.hidden = true;
+          pinInput.value = '';
+        };
+
+        const showGate = () => {
+          gate.hidden = false;
+          gate.style.display = 'flex';
+        };
+
+        const isUnlocked = () => {
+          try {
+            return window.localStorage.getItem(config.storageKey) === 'true';
+          } catch {
+            return false;
+          }
+        };
+
+        const getAllowedParentOrigin = () => {
+          const candidates = [];
+          if (document.referrer) {
+            try {
+              candidates.push(new URL(document.referrer).origin);
+            } catch {}
+          }
+          const ancestorOrigins = window.location.ancestorOrigins;
+          if (ancestorOrigins && ancestorOrigins.length) {
+            for (let i = 0; i < ancestorOrigins.length; i += 1) {
+              candidates.push(ancestorOrigins[i]);
+            }
+          }
+          for (const origin of candidates) {
+            if (
+              Array.isArray(config.allowedParents) &&
+              config.allowedParents.some((pattern) =>
+                matchesOriginPattern(origin, pattern)
+              )
+            ) {
+              return origin;
+            }
+          }
+          return null;
+        };
+
+        const inIframe = window.self !== window.top;
+        const unlocked = isUnlocked();
+        const allowedParent = inIframe ? getAllowedParentOrigin() : null;
+        const requiresGate =
+          Boolean(config.enabled) &&
+          !unlocked &&
+          (inIframe ? !allowedParent : !config.allowTopLevel);
+
+        if (!requiresGate) {
+          hideGate();
+          return;
+        }
+
+        showGate();
+
+        const handleUnlock = () => {
+          if (pinInput.value.trim() !== config.pinCode) {
+            errorText.hidden = false;
+            return;
+          }
+          try {
+            window.localStorage.setItem(config.storageKey, 'true');
+          } catch {
+            // Ignore storage failures and still allow the current session through.
+          }
+          hideGate();
+        };
+
+        unlockButton.addEventListener('click', handleUnlock);
+        pinInput.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter') handleUnlock();
+        });
+      })();
+    </script>
+
     <header
-      class={feedParam
-        ? ''
-        : 'custom-scrollbar lg:fixed lg:inset-y-0 lg:left-0 lg:flex lg:w-112 lg:items-start lg:overflow-y-auto xl:w-120'}
+      class={showStaticSidebar
+        ? 'custom-scrollbar lg:fixed lg:inset-y-0 lg:left-0 lg:flex lg:w-112 lg:items-start lg:overflow-y-auto xl:w-120'
+        : 'hidden'}
       transition:persist="sidenav"
     >
-      {!feedParam && (
+      {showStaticSidebar && (
       <div class="relative z-10 mx-auto lg:min-h-full lg:flex-auto">
         <div
           class="bg-light-card dark:bg-dark-card m-2 rounded-lg pt-10 pb-4 lg:pt-16 lg:pb-12"
@@ -172,7 +396,7 @@ const description = Astro.props.description ?? starpodConfig.description;
       )}
     </header>
     <main
-      class={`bg-light-card dark:bg-dark-card mx-2 mb-2 rounded-lg lg:relative lg:min-h-screen ${feedParam ? '' : 'lg:ml-112 xl:ml-120'}`}
+      class={`bg-light-card dark:bg-dark-card mx-2 mb-2 rounded-lg lg:relative lg:min-h-screen ${showStaticSidebar ? 'lg:ml-112 xl:ml-120' : ''}`}
     >
       <div class="absolute top-4 right-4 z-30">
         <SearchButton client:load />
@@ -201,7 +425,7 @@ const description = Astro.props.description ?? starpodConfig.description;
         </div>
       </div>
     </main>
-    {!feedParam && (
+    {showStaticSidebar && (
     <footer class="block lg:hidden">
       <Hosts />
       <InfoCard />
@@ -210,7 +434,11 @@ const description = Astro.props.description ?? starpodConfig.description;
     <div id="audio-player">
       <Player client:only="preact" transition:persist="player" />
     </div>
-    <SearchDialog client:load transition:persist="search-dialog" />
+    <SearchDialog
+      client:load
+      feed={feedQueryValue}
+      transition:persist={searchDialogPersistKey}
+    />
     <SpeedInsights />
   </body>
 </html>
