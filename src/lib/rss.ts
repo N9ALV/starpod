@@ -2,13 +2,19 @@ import { htmlToText } from 'html-to-text';
 import parseFeed from 'rss-to-json';
 import { array, number, object, optional, parse, string, union } from 'valibot';
 
-import { resolveFeedSource } from './feed-source';
+import { isAllowedFeedUrl, resolveFeedSource } from './feed-source';
 import { optimizeImage } from './optimize-episode-image';
 import { dasherize } from '../utils/dasherize';
 import { truncate } from '../utils/truncate';
 
 const FEED_PARSE_RETRIES = 3;
 const FEED_PARSE_RETRY_DELAY_MS = 2000;
+const FEED_DISCOVERY_ACCEPT_HEADER =
+  'application/rss+xml, application/atom+xml, application/xml, text/xml, text/html;q=0.9, */*;q=0.1';
+const FEED_LINK_TAG_PATTERN = /<link\b[^>]*>/gi;
+const HTML_URL_PATTERN = /https?:\/\/[^\s"'<>`]+/gi;
+const AUDIO_URL_PATTERN =
+  /\.(?:mp3|m4a|aac|wav|ogg|oga|opus|flac)(?:[?#].*)?$/i;
 
 export interface Show {
   title: string;
@@ -37,6 +43,8 @@ export interface Episode {
 
 const showInfoCache = new Map<string, Show>();
 const episodesCache = new Map<string, Array<Episode>>();
+const parsedFeedCache = new Map<string, unknown>();
+const feedUrlResolutionCache = new Map<string, string>();
 
 function resolveFeedUrl(feedUrl?: string) {
   return resolveFeedSource(feedUrl).resolvedUrl;
@@ -86,6 +94,222 @@ function parsePublished(
   return Number.isNaN(parsed) ? fallback : parsed;
 }
 
+function decodeHtmlValue(value: string) {
+  return value
+    .replaceAll('&amp;', '&')
+    .replaceAll('&quot;', '"')
+    .replaceAll('&#39;', "'")
+    .replaceAll('&apos;', "'");
+}
+
+function resolveUrlCandidate(value: string, baseUrl?: string) {
+  try {
+    return new URL(decodeHtmlValue(value), baseUrl).toString();
+  } catch {
+    return undefined;
+  }
+}
+
+function isLikelyFeedUrl(candidate: string) {
+  try {
+    const url = new URL(candidate);
+    const normalized = `${url.hostname}${url.pathname}`.toLowerCase();
+    const pathname = url.pathname.toLowerCase();
+
+    return (
+      pathname.endsWith('.rss') ||
+      pathname.endsWith('/rss') ||
+      pathname.endsWith('/feed') ||
+      pathname.endsWith('/feed/') ||
+      pathname.endsWith('/podcast/rss') ||
+      normalized.includes('feeds.acast.com/public/shows/') ||
+      normalized.includes('feeds.buzzsprout.com/') ||
+      normalized.includes('rss.flightcast.com/') ||
+      normalized.includes('feeds.libsyn.com/') ||
+      normalized.includes('rss.libsyn.com/')
+    );
+  } catch {
+    return false;
+  }
+}
+
+function getStringCandidate(value: unknown): string | undefined {
+  if (!value) return undefined;
+
+  if (typeof value === 'string') {
+    const normalized = value.trim();
+    return normalized || undefined;
+  }
+
+  if (Array.isArray(value)) {
+    for (const entry of value) {
+      const candidate = getStringCandidate(entry);
+      if (candidate) return candidate;
+    }
+    return undefined;
+  }
+
+  if (typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    return getStringCandidate([
+      record.url,
+      record.href,
+      record.link,
+      record.src,
+      record.file,
+      record.thumbnail,
+      record.image,
+      record.content,
+      record.contents,
+      record.group,
+      record.images
+    ]);
+  }
+
+  return undefined;
+}
+
+function isAudioLikeSource(source: string, type?: string) {
+  const normalizedType = type?.toLowerCase();
+  return (
+    !!source &&
+    (!!normalizedType?.startsWith('audio/') ||
+      AUDIO_URL_PATTERN.test(source) ||
+      /\/podcast\/play\//i.test(source))
+  );
+}
+
+function getAudioCandidate(
+  value: unknown
+): { src: string; type?: string } | undefined {
+  if (!value) return undefined;
+
+  if (Array.isArray(value)) {
+    for (const entry of value) {
+      const candidate = getAudioCandidate(entry);
+      if (candidate) return candidate;
+    }
+    return undefined;
+  }
+
+  if (typeof value === 'string') {
+    return isAudioLikeSource(value) ? { src: value } : undefined;
+  }
+
+  if (typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    const type =
+      typeof record.type === 'string'
+        ? record.type
+        : typeof record.medium === 'string'
+          ? record.medium
+          : undefined;
+    const source = getStringCandidate([
+      record.url,
+      record.href,
+      record.link,
+      record.src,
+      record.file
+    ]);
+
+    if (source && isAudioLikeSource(source, type)) {
+      return {
+        src: source,
+        type
+      };
+    }
+
+    return getAudioCandidate([
+      record.content,
+      record.contents,
+      record.group,
+      record.media,
+      record.enclosure,
+      record.enclosures
+    ]);
+  }
+
+  return undefined;
+}
+
+function extractFeedUrlsFromHtml(html: string, baseUrl: string) {
+  const candidates = new Set<string>();
+
+  for (const linkTag of html.match(FEED_LINK_TAG_PATTERN) ?? []) {
+    const normalizedTag = linkTag.toLowerCase();
+    if (
+      !normalizedTag.includes('application/rss+xml') &&
+      !normalizedTag.includes('application/atom+xml')
+    ) {
+      continue;
+    }
+
+    const hrefMatch = linkTag.match(/\bhref=(['"])([^'"]+)\1/i);
+    const resolvedUrl = hrefMatch?.[2]
+      ? resolveUrlCandidate(hrefMatch[2], baseUrl)
+      : undefined;
+
+    if (resolvedUrl) {
+      candidates.add(resolvedUrl);
+    }
+  }
+
+  for (const match of html.matchAll(HTML_URL_PATTERN)) {
+    const resolvedUrl = resolveUrlCandidate(match[0], baseUrl);
+    if (resolvedUrl && isLikelyFeedUrl(resolvedUrl)) {
+      candidates.add(resolvedUrl);
+    }
+  }
+
+  return Array.from(candidates).filter(
+    (candidate) => isAllowedFeedUrl(candidate) && isLikelyFeedUrl(candidate)
+  );
+}
+
+async function discoverFeedUrl(candidateUrl: string) {
+  const cached = feedUrlResolutionCache.get(candidateUrl);
+  if (cached) {
+    return cached;
+  }
+
+  try {
+    const response = await fetch(candidateUrl, {
+      headers: {
+        Accept: FEED_DISCOVERY_ACCEPT_HEADER
+      }
+    });
+
+    if (!response.ok) {
+      return undefined;
+    }
+
+    const finalUrl = response.url || candidateUrl;
+    const contentType = response.headers.get('content-type')?.toLowerCase() ?? '';
+
+    if (!contentType.includes('html')) {
+      if (isAllowedFeedUrl(finalUrl) && isLikelyFeedUrl(finalUrl)) {
+        feedUrlResolutionCache.set(candidateUrl, finalUrl);
+        feedUrlResolutionCache.set(finalUrl, finalUrl);
+        return finalUrl;
+      }
+
+      return undefined;
+    }
+
+    const body = await response.text();
+    const discoveredFeedUrl = extractFeedUrlsFromHtml(body, finalUrl)[0];
+
+    if (discoveredFeedUrl) {
+      feedUrlResolutionCache.set(candidateUrl, discoveredFeedUrl);
+      feedUrlResolutionCache.set(discoveredFeedUrl, discoveredFeedUrl);
+    }
+
+    return discoveredFeedUrl;
+  } catch {
+    return undefined;
+  }
+}
+
 function getFeedItems(feed: unknown) {
   const candidateItems =
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -99,51 +323,54 @@ function getFeedItems(feed: unknown) {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function getEpisodeImage(item: any) {
-  if (typeof item?.itunes_image === 'string') return item.itunes_image;
-  if (typeof item?.image === 'string') return item.image;
-
-  return (
-    item?.itunes_image?.href ??
-    item?.image?.url ??
-    item?.thumbnail ??
-    undefined
-  );
+  return getStringCandidate([
+    item?.itunes_image,
+    item?.itunes_image?.href,
+    item?.image,
+    item?.image?.url,
+    item?.thumbnail,
+    item?.media?.thumbnail,
+    item?.media?.image,
+    item?.media
+  ]);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function getEpisodeAudio(item: any) {
-  const enclosure =
-    Array.isArray(item?.enclosures) && item.enclosures.length > 0
-      ? item.enclosures.find((candidate: { url?: string }) => !!candidate?.url)
-      : item?.enclosure;
+  const audioCandidate = getAudioCandidate([
+    item?.enclosures,
+    item?.enclosure,
+    item?.media,
+    item?.audio,
+    item?.link
+  ]);
 
-  if (enclosure?.url) {
-    return {
-      src: enclosure.url,
-      type: enclosure.type ?? 'audio/mpeg'
-    };
-  }
-
-  if (enclosure?.link) {
-    return {
-      src: enclosure.link,
-      type: enclosure.type ?? 'audio/mpeg'
-    };
-  }
-
-  return {
-    src: '',
-    type: 'audio/mpeg'
-  };
+  return audioCandidate
+    ? {
+        src: audioCandidate.src,
+        type: audioCandidate.type ?? 'audio/mpeg'
+      }
+    : {
+        src: '',
+        type: 'audio/mpeg'
+      };
 }
 
 async function parseRssWithRetry<T = unknown>(rssFeed: string): Promise<T> {
   let lastError: unknown;
+  const parseRss =
+    typeof parseFeed === 'function'
+      ? parseFeed
+      : // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (parseFeed as any)?.parse;
 
   for (let attempt = 1; attempt <= FEED_PARSE_RETRIES; attempt += 1) {
     try {
-      // @ts-expect-error rss-to-json parse typing does not match runtime usage
-      return (await parseFeed.parse(rssFeed)) as T;
+      if (typeof parseRss !== 'function') {
+        throw new TypeError('rss-to-json parser is unavailable');
+      }
+
+      return (await parseRss(rssFeed)) as T;
     } catch (error) {
       lastError = error;
       if (attempt < FEED_PARSE_RETRIES) {
@@ -155,27 +382,103 @@ async function parseRssWithRetry<T = unknown>(rssFeed: string): Promise<T> {
   throw lastError;
 }
 
+async function parseResolvedFeed<T = unknown>(feedUrl?: string) {
+  const requestedFeedUrl = resolveFeedUrl(feedUrl);
+  const cachedResolvedFeedUrl =
+    feedUrlResolutionCache.get(requestedFeedUrl) ?? requestedFeedUrl;
+  const cachedFeed = parsedFeedCache.get(cachedResolvedFeedUrl);
+
+  if (cachedFeed) {
+    return {
+      requestedFeedUrl,
+      rssFeed: cachedResolvedFeedUrl,
+      feed: cachedFeed as T
+    };
+  }
+
+  const candidateFeedUrls = Array.from(
+    new Set([cachedResolvedFeedUrl, requestedFeedUrl])
+  );
+  let lastError: unknown;
+
+  for (const candidateFeedUrl of candidateFeedUrls) {
+    try {
+      const parsedFeed = await parseRssWithRetry<T>(candidateFeedUrl);
+      parsedFeedCache.set(candidateFeedUrl, parsedFeed);
+      feedUrlResolutionCache.set(requestedFeedUrl, candidateFeedUrl);
+      feedUrlResolutionCache.set(candidateFeedUrl, candidateFeedUrl);
+
+      return {
+        requestedFeedUrl,
+        rssFeed: candidateFeedUrl,
+        feed: parsedFeed
+      };
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  const discoveredFeedUrl = await discoverFeedUrl(requestedFeedUrl);
+  if (discoveredFeedUrl && !candidateFeedUrls.includes(discoveredFeedUrl)) {
+    const cachedDiscoveredFeed = parsedFeedCache.get(discoveredFeedUrl);
+    if (cachedDiscoveredFeed) {
+      feedUrlResolutionCache.set(requestedFeedUrl, discoveredFeedUrl);
+
+      return {
+        requestedFeedUrl,
+        rssFeed: discoveredFeedUrl,
+        feed: cachedDiscoveredFeed as T
+      };
+    }
+
+    const parsedFeed = await parseRssWithRetry<T>(discoveredFeedUrl);
+    parsedFeedCache.set(discoveredFeedUrl, parsedFeed);
+    feedUrlResolutionCache.set(requestedFeedUrl, discoveredFeedUrl);
+    feedUrlResolutionCache.set(discoveredFeedUrl, discoveredFeedUrl);
+
+    return {
+      requestedFeedUrl,
+      rssFeed: discoveredFeedUrl,
+      feed: parsedFeed
+    };
+  }
+
+  throw lastError;
+}
+
+export async function getParsedFeed<T = unknown>(feedUrl?: string) {
+  return (await parseResolvedFeed<T>(feedUrl)).feed;
+}
+
 export async function getShowInfo(feedUrl?: string) {
-  const rssFeed = resolveFeedUrl(feedUrl);
-  const cachedShowInfo = showInfoCache.get(rssFeed);
+  const requestedFeedUrl = resolveFeedUrl(feedUrl);
+  const cachedShowInfo =
+    showInfoCache.get(requestedFeedUrl) ??
+    showInfoCache.get(feedUrlResolutionCache.get(requestedFeedUrl) ?? '');
+
   if (cachedShowInfo) {
     return cachedShowInfo;
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const raw = await parseRssWithRetry<any>(rssFeed);
+  const { feed: raw, rssFeed } = await parseResolvedFeed<any>(feedUrl);
 
   const showInfo: Show = {
     title: raw?.title ?? raw?.feed?.title ?? 'Unknown Show',
     description:
       raw?.description ?? raw?.feed?.description ?? raw?.subtitle ?? '',
-    image:
-      raw?.image?.url ??
-      raw?.image ??
-      raw?.itunes_image?.href ??
-      raw?.feed?.itunes_image?.href ??
-      raw?.feed?.image?.url ??
-      '',
+    image: getStringCandidate([
+      raw?.image,
+      raw?.image?.url,
+      raw?.itunes_image,
+      raw?.itunes_image?.href,
+      raw?.feed?.image,
+      raw?.feed?.image?.url,
+      raw?.feed?.itunes_image,
+      raw?.feed?.itunes_image?.href,
+      raw?.cover,
+      raw?.media
+    ]) ?? '',
     link: raw?.link ?? raw?.feed?.link ?? '',
     author:
       raw?.author ??
@@ -197,13 +500,17 @@ export async function getShowInfo(feedUrl?: string) {
     }
   }
 
+  showInfoCache.set(requestedFeedUrl, showInfo);
   showInfoCache.set(rssFeed, showInfo);
   return showInfo;
 }
 
 export async function getAllEpisodes(feedUrl?: string) {
-  const rssFeed = resolveFeedUrl(feedUrl);
-  const cachedEpisodes = episodesCache.get(rssFeed);
+  const requestedFeedUrl = resolveFeedUrl(feedUrl);
+  const cachedEpisodes =
+    episodesCache.get(requestedFeedUrl) ??
+    episodesCache.get(feedUrlResolutionCache.get(requestedFeedUrl) ?? '');
+
   if (cachedEpisodes) {
     return cachedEpisodes;
   }
@@ -215,6 +522,9 @@ export async function getAllEpisodes(feedUrl?: string) {
         title: string(),
         published: optional(union([number(), string()])),
         pubDate: optional(union([number(), string()])),
+        created: optional(union([number(), string()])),
+        isoDate: optional(union([number(), string()])),
+        updated: optional(union([number(), string()])),
         description: optional(string()),
         content: optional(string()),
         content_encoded: optional(string()),
@@ -237,7 +547,7 @@ export async function getAllEpisodes(feedUrl?: string) {
   });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const feed = await parseRssWithRetry<any>(rssFeed);
+  const { feed, rssFeed } = await parseResolvedFeed<any>(feedUrl);
   const rawItems = getFeedItems(feed);
   let items: ReturnType<typeof parse<typeof feedSchema>>['items'];
 
@@ -283,7 +593,11 @@ export async function getAllEpisodes(feedUrl?: string) {
             }
 
             const published = parsePublished(
-              item.published ?? item.pubDate,
+              item.published ??
+                item.pubDate ??
+                item.created ??
+                item.isoDate ??
+                item.updated,
               Date.now()
             );
             const audio = getEpisodeAudio(item);
@@ -322,6 +636,7 @@ export async function getAllEpisodes(feedUrl?: string) {
     dedupedEpisodes.push(episode);
   }
 
+  episodesCache.set(requestedFeedUrl, dedupedEpisodes);
   episodesCache.set(rssFeed, dedupedEpisodes);
   return dedupedEpisodes;
 }

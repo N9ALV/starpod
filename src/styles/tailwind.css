@@ -4,37 +4,38 @@
 @plugin '@tailwindcss/typography';
 
 @theme {
-    --background-image-dots-dark: url('/images/dots-dark.svg');
-    --background-image-dots-light: url('/images/dots-dark.svg');
-    --background-image-gradient-light: background: radial-gradient(77% 77% at 50% 0%,
-            #edecfc 0%,
-            rgba(237, 236, 252, 0) 100%);
+  --background-image-dots-dark: url('/images/dots-dark.svg');
+  --background-image-dots-light: url('/images/dots-dark.svg');
+  --background-image-gradient-light: radial-gradient(
+    77% 77% at 50% 0%,
+    #edecfc 0%,
+    rgba(237, 236, 252, 0) 100%
+  );
+  --background-image-gradient-dark: radial-gradient(
+    77% 77% at 50% 0%,
+    #314080 0%,
+    rgba(49, 64, 128, 0) 100%
+  );
 
-    /* UPDATED: top fade color -> #314080 */
-    --background-image-gradient-dark: radial-gradient(77% 77% at 50% 0%,
-            #314080 0%,
-            rgba(49, 64, 128, 0) 100%);
-
-    /* UPDATED: base background -> #000510 */
-    --color-dark-background: #000510;
-    --color-dark-border: #080b13;
-    --color-dark-button: #000717;
-    --color-dark-card: #000510;
-    --color-dark-icon: #B4B9D8;
-    --color-dark-input-bg: #000510;
-    --color-dark-input-border: #2A3451;
-    --color-dark-input-border-focused: #5F7CD4;
-    --color-dark-player: #1C223A;
-    --color-dark-text-body: #A0A6C6;
-    --color-light-card: #F8F8FB;
-    --color-light-icon: #6F63B0;
-    --color-light-input-bg: #FFFFFF;
-    --color-light-input-border: #E0E4EF;
-    --color-light-input-border-focused: #7E8ED2;
-    --color-light-player: #F1F2F9;
-    --color-light-text-body: #8E8EB7;
-    --color-light-text-heading: #2F2E5F;
-    --font-inter: var(--astro-font-inter);
+  --color-dark-background: #11121e;
+  --color-dark-border: #080b13;
+  --color-dark-button: #000717;
+  --color-dark-card: #000510;
+  --color-dark-icon: #b4b9d8;
+  --color-dark-input-bg: #000510;
+  --color-dark-input-border: #2a3451;
+  --color-dark-input-border-focused: #5f7cd4;
+  --color-dark-player: #1c223a;
+  --color-dark-text-body: #a0a6c6;
+  --color-light-card: #f8f8fb;
+  --color-light-icon: #6f63b0;
+  --color-light-input-bg: #ffffff;
+  --color-light-input-border: #e0e4ef;
+  --color-light-input-border-focused: #7e8ed2;
+  --color-light-player: #f1f2f9;
+  --color-light-text-body: #8e8eb7;
+  --color-light-text-heading: #2f2e5f;
+  --font-inter: Inter, "Segoe UI", sans-serif;
 }
 
 /*
@@ -46,12 +47,11 @@
   color utility to any element that depends on these defaults.
 */
 @layer base {
-
-    *,
-    ::after,
-    ::before,
-    ::backdrop,
-    ::file-selector-button {
-        border-color: var(--color-gray-200, currentColor);
-    }
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentColor);
+  }
 }

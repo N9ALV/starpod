@@ -2,6 +2,31 @@ import starpodConfig from '../../starpod.config';
 
 const BUZZSPROUT_HOST = 'feeds.buzzsprout.com';
 const FLIGHTCAST_HOST = 'rss.flightcast.com';
+const KNOWN_PODCAST_HOST_PATTERNS = [
+  'anchor.fm',
+  'podcasters.spotify.com',
+  'spotifyforcreators.com',
+  'creators.spotify.com',
+  'acast.com',
+  'www.acast.com',
+  'shows.acast.com',
+  'feeds.acast.com',
+  '*.acast.com',
+  'interactivebrokers.eu',
+  'www.interactivebrokers.eu',
+  'interactivebrokers.com',
+  'www.interactivebrokers.com',
+  'ibkrcampus.eu',
+  'www.ibkrcampus.eu',
+  '*.interactivebrokers.eu',
+  '*.interactivebrokers.com',
+  '*.ibkrcampus.eu',
+  'libsyn.com',
+  'www.libsyn.com',
+  'feeds.libsyn.com',
+  'rss.libsyn.com',
+  '*.libsyn.com'
+];
 
 export interface FeedSourceResolution {
   requested?: string;
@@ -10,6 +35,13 @@ export interface FeedSourceResolution {
   isDefault: boolean;
   isValid: boolean;
   invalidReason?: string;
+}
+
+function getEnvironmentValue(name: string) {
+  return (
+    (import.meta as ImportMeta & { env?: Record<string, string | undefined> })
+      .env?.[name]
+  );
 }
 
 function normalizeUrl(value: string): string | undefined {
@@ -53,13 +85,18 @@ function getDefaultAllowedHosts() {
   const defaultHost = new URL(starpodConfig.rssFeed).hostname;
 
   return Array.from(
-    new Set([defaultHost, BUZZSPROUT_HOST, FLIGHTCAST_HOST])
+    new Set([
+      defaultHost,
+      BUZZSPROUT_HOST,
+      FLIGHTCAST_HOST,
+      ...KNOWN_PODCAST_HOST_PATTERNS
+    ])
   );
 }
 
 export function getFeedAllowlist() {
-  const fromEnv = parseList(import.meta.env.FEED_ALLOWLIST as string | undefined);
-  return fromEnv.length > 0 ? fromEnv : getDefaultAllowedHosts();
+  const fromEnv = parseList(getEnvironmentValue('FEED_ALLOWLIST'));
+  return Array.from(new Set([...getDefaultAllowedHosts(), ...fromEnv]));
 }
 
 function getFeedAliases() {
@@ -75,7 +112,7 @@ function getFeedAliases() {
   }
 
   const aliasesFromEnv = parseList(
-    import.meta.env.FEED_SOURCE_ALIASES as string | undefined
+    getEnvironmentValue('FEED_SOURCE_ALIASES')
   );
 
   for (const entry of aliasesFromEnv) {
@@ -141,7 +178,7 @@ function resolveCandidateUrl(requested: string) {
     return normalizeUrl(`https://${withoutScheme}`);
   }
 
-  if (/^[a-z0-9.-]+\.[a-z]{2,}\/.+/i.test(withoutScheme)) {
+  if (/^[a-z0-9.-]+\.[a-z]{2,}(?::\d+)?(?:[/?#].*)?$/i.test(withoutScheme)) {
     return normalizeUrl(`https://${withoutScheme}`);
   }
 

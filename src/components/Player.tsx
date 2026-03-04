@@ -1,10 +1,10 @@
-import { useEffect, useState, useRef } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 
 import { currentEpisode, isMuted, isPlaying } from '../components/state';
+import ForwardButton from './player/ForwardButton';
 import MuteButton from './player/MuteButton';
 import PlayButton from './player/PlayButton';
 import PlaybackRateButton from './player/PlaybackRateButton';
-import ForwardButton from './player/ForwardButton';
 import RewindButton from './player/RewindButton';
 import Slider from './player/Slider';
 
@@ -14,7 +14,7 @@ export default function Player() {
   const [currentTime, setCurrentTime] = useState(0);
 
   if (currentEpisode.value === null) {
-    return;
+    return null;
   }
 
   const { audio, episodeNumber, title } = currentEpisode.value;
@@ -39,10 +39,11 @@ export default function Player() {
         const pxOffset = slider.clientWidth * (percentage / 100);
         (particles as HTMLElement).style.setProperty(
           '--seek-particles-left',
-          `${pxOffset - 10}px` // -5 to put the dots into the track
+          `${pxOffset - 10}px`
         );
       }
     }
+
     progressRef.current = requestAnimationFrame(whilePlaying);
   }
 
@@ -73,7 +74,7 @@ export default function Player() {
   }, [currentTime]);
 
   return (
-    <div class="player fixed inset-x-0 bottom-0 z-50 lg:left-112 xl:left-120">
+    <div class="player fixed inset-x-0 bottom-0 z-50">
       <div
         class="flex items-center gap-6 bg-light-player/90 px-4 py-4 backdrop-blur-xs md:px-6 dark:bg-dark-player/90"
         role="region"

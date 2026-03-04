@@ -3,6 +3,7 @@ import type { APIRoute } from 'astro';
 export const prerender = false;
 
 export const POST: APIRoute = async ({ request }) => {
+  const webhookUrl = import.meta.env.DISCORD_WEBHOOK;
   const data = await request.formData();
   const name = data.get('name');
   const email = data.get('email');
@@ -18,7 +19,16 @@ export const POST: APIRoute = async ({ request }) => {
     );
   }
 
-  await fetch(import.meta.env.DISCORD_WEBHOOK, {
+  if (!webhookUrl) {
+    return new Response(
+      JSON.stringify({
+        message: 'Contact form is not configured.'
+      }),
+      { status: 503 }
+    );
+  }
+
+  const webhookResponse = await fetch(webhookUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
@@ -50,6 +60,15 @@ export const POST: APIRoute = async ({ request }) => {
       ]
     })
   });
+
+  if (!webhookResponse.ok) {
+    return new Response(
+      JSON.stringify({
+        message: 'Unable to submit contact form right now.'
+      }),
+      { status: 502 }
+    );
+  }
 
   // Do something with the data, then return a success response
   return new Response(

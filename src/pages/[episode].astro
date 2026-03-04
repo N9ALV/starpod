@@ -1,35 +1,20 @@
 ---
-import { getEntry } from 'astro:content';
-// DB usage removed for static builds on Netlify
-// import {
-//   db,
-//   eq,
-//   Episode as DbEpisode,
-//   HostOrGuest,
-//   Person,
-//   Sponsor,
-//   SponsorForEpisode
-// } from 'astro:db';
-
 import { Schema } from 'astro-seo-schema';
 
 import FormattedDate from '../components/FormattedDate';
+import FullPlayButton from '../components/FullPlayButton';
 import CreatorsAndGuests from '../components/episode/CreatorsAndGuests.astro';
 import Sponsors from '../components/episode/Sponsors.astro';
 import PlayButton from '../components/player/PlayButton';
-import FullPlayButton from '../components/FullPlayButton';
 import UFOIllustration from '../components/illustrations/UFOIllustration.astro';
 import Layout from '../layouts/Layout.astro';
-import {
-  getRequestedFeed,
-  resolveFeedSource,
-  withFeedQuery
-} from '../lib/feed-source';
+import { getRequestedFeed, resolveFeedSource, withFeedQuery } from '../lib/feed-source';
 import { getAllEpisodes, getShowInfo } from '../lib/rss';
 import { dasherize } from '../utils/dasherize';
 
 const feedSource = resolveFeedSource(getRequestedFeed(Astro.url.searchParams));
 const feed = feedSource.resolvedUrl;
+
 let show;
 let allEpisodes;
 
@@ -43,8 +28,8 @@ try {
   }
   return Astro.redirect(fallbackUrl.toString());
 }
-const routeEpisode = Astro.params.episode;
 
+const routeEpisode = Astro.params.episode;
 const episode = allEpisodes.find(
   (item) => item.episodeNumber === routeEpisode || item.episodeSlug === routeEpisode
 );
@@ -53,24 +38,18 @@ if (!episode) {
   return Astro.redirect(withFeedQuery('/', feedSource.queryValue));
 }
 
-let Transcript;
-
-if (episode.episodeNumber && episode.episodeNumber !== 'Bonus') {
-  Transcript = await getEntry('transcripts', episode.episodeNumber);
-  if (Transcript) {
-    const { Content } = await Transcript.render();
-    Transcript = Content;
-  }
-}
-
 const canonicalURL = new URL(
   withFeedQuery(`/${episode.episodeSlug}`, feedSource.queryValue),
   Astro.url
 );
+const transcriptMarkdownUrl =
+  !feedSource.queryValue && episode.episodeNumber && episode.episodeNumber !== 'Bonus'
+    ? `/${episode.episodeSlug}.html.md`
+    : null;
 
-// DB queries removed for static builds; fallback to empty arrays
 type HostsGuest = { id: string; img: string | null; isHost: boolean; name: string };
 type SponsorData = { id: string; img: string | null; name: string; url: string | null };
+
 const hostsAndGuests: HostsGuest[] = [];
 const sponsors: SponsorData[] = [];
 const safeSponsors = sponsors.map((s) => ({ ...s, url: s.url ?? '' }));
@@ -112,7 +91,6 @@ const title = `${episode.title} - ${show.title} - Episode ${episode.episodeNumbe
     }}
   />
 
-  <!-- Enhanced Open Graph tags -->
   <meta slot="head" property="og:audio" content={episode.audio?.src} />
   <meta
     slot="head"
@@ -121,7 +99,7 @@ const title = `${episode.title} - ${show.title} - Episode ${episode.episodeNumbe
   />
   {
     hostsAndGuests
-      ?.filter((p) => p.isHost)
+      .filter((person) => person.isHost)
       .map((host) => (
         <meta slot="head" property="article:author" content={host.name} />
       ))
@@ -151,9 +129,7 @@ const title = `${episode.title} - ${show.title} - Episode ${episode.episodeNumbe
           {episode.episodeNumber}: {episode.title}
         </h1>
 
-        <p class="mb-8 lg:mb-12">
-          {episode.description}
-        </p>
+        <p class="mb-8 lg:mb-12">{episode.description}</p>
 
         <div class="mb-8 block lg:hidden">
           <FullPlayButton
@@ -168,7 +144,7 @@ const title = `${episode.title} - ${show.title} - Episode ${episode.episodeNumbe
         </div>
 
         {
-          hostsAndGuests?.length ? (
+          hostsAndGuests.length ? (
             <CreatorsAndGuests hostsAndGuests={hostsAndGuests} />
           ) : undefined
         }
@@ -188,44 +164,14 @@ const title = `${episode.title} - ${show.title} - Episode ${episode.episodeNumbe
         </h3>
 
         {
-          Transcript ? (
+          transcriptMarkdownUrl ? (
             <div class="mb-20">
-              <Schema
-                item={{
-                  '@context': 'https://schema.org',
-                  '@type': 'Article',
-                  headline: `${episode.title} - Episode Transcript`,
-                  datePublished: new Date(episode.published).toISOString(),
-                  author: {
-                    '@type': 'Organization',
-                    name: show.title
-                  },
-                  publisher: {
-                    '@type': 'Organization',
-                    name: show.title
-                  },
-                  mainEntityOfPage: {
-                    '@type': 'WebPage',
-                    '@id': canonicalURL.toString()
-                  },
-                  about: {
-                    '@type': 'PodcastEpisode',
-                    name: episode.title,
-                    episodeNumber: episode.episodeNumber
-                  }
-                }}
-              />
-              <article class="transcript prose prose-neutral dark:prose-invert line-clamp-4">
-                <Transcript />
-              </article>
-
-              <button
-                class="btn mt-4"
-                type="button"
-                onclick="document.querySelector('.transcript').classList.remove('line-clamp-4'); this.classList.add('hidden');"
-              >
-                <span class="px-8 py-3">Show more</span>
-              </button>
+              <p class="mb-4">
+                Transcript content is available on the markdown version of this episode.
+              </p>
+              <a class="btn inline-flex" href={transcriptMarkdownUrl}>
+                <span class="px-8 py-3">Open transcript markdown</span>
+              </a>
             </div>
           ) : (
             <div class="flex flex-col items-center">

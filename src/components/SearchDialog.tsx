@@ -18,10 +18,34 @@ export default function SearchDialog({ feed }: SearchDialogProps) {
 
   // Load episodes on mount
   useEffect(() => {
-    fetch(withFeedQuery('/api/episodes/search.json', feed))
-      .then((res) => res.json())
-      .then((data) => setEpisodes(data))
-      .catch(console.error);
+    const abortController = new AbortController();
+
+    setEpisodes([]);
+    setFilteredEpisodes([]);
+    setSelectedIndex(0);
+
+    fetch(withFeedQuery('/api/episodes/search.json', feed), {
+      signal: abortController.signal
+    })
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error(`Failed to load search episodes: ${res.status}`);
+        }
+
+        return res.json() as Promise<Episode[]>;
+      })
+      .then((data) => {
+        setEpisodes(Array.isArray(data) ? data : []);
+      })
+      .catch((error) => {
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          return;
+        }
+
+        console.error(error);
+      });
+
+    return () => abortController.abort();
   }, [feed]);
 
   const getEpisodeHref = useCallback(

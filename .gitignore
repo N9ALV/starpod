@@ -1,5 +1,7 @@
 # build output
 .vercel/
+.netlify/
+.wrangler/
 dist/
 
 # generated types

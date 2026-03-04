@@ -40,6 +40,29 @@ describe('feed-source helpers', () => {
     );
   });
 
+  it('accepts scheme-less feed urls in the feed query', () => {
+    const result = resolveFeedSource('feeds.libsyn.com/121695/rss');
+
+    expect(result.isValid).toBe(true);
+    expect(result.isDefault).toBe(false);
+    expect(result.queryValue).toBe('feeds.libsyn.com/121695/rss');
+    expect(result.resolvedUrl).toBe('https://feeds.libsyn.com/121695/rss');
+  });
+
+  it('accepts known external feed hosts without requiring https', () => {
+    expect(
+      resolveFeedSource('anchor.fm/s/3874a3c8/podcast/rss').resolvedUrl
+    ).toBe('https://anchor.fm/s/3874a3c8/podcast/rss');
+    expect(
+      resolveFeedSource(
+        'www.interactivebrokers.eu/campus/category/podcasts/feed/'
+      ).resolvedUrl
+    ).toBe('https://www.interactivebrokers.eu/campus/category/podcasts/feed/');
+    expect(
+      resolveFeedSource('shows.acast.com/mythic-enablers-podcast').resolvedUrl
+    ).toBe('https://shows.acast.com/mythic-enablers-podcast');
+  });
+
   it('falls back to the default feed for disallowed hosts', () => {
     const result = resolveFeedSource('https://example.com/feed.xml');
 

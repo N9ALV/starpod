@@ -5,6 +5,8 @@ import { cleanTranscript, generateEpisodeMarkdown } from '../lib/llms';
 import { getAllEpisodes, getShowInfo } from '../lib/rss';
 import starpodConfig from '../../starpod.config';
 
+export const prerender = true;
+
 export async function getStaticPaths() {
   const allEpisodes = await getAllEpisodes();
 

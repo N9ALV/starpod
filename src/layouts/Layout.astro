@@ -1,9 +1,6 @@
 ---
-import { Font } from 'astro:assets';
 import { ClientRouter } from 'astro:transitions';
 import { Schema } from 'astro-seo-schema';
-
-import SpeedInsights from '@vercel/speed-insights/astro';
 
 import Breadcrumbs from '../components/Breadcrumbs.astro';
 import Dots from '../components/Dots.astro';
@@ -62,6 +59,12 @@ const description = Astro.props.description ?? starpodConfig.description;
     <link rel="sitemap" href="/sitemap-index.xml" />
 
     <link rel="canonical" href={canonicalURL} />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+    />
     <meta content={canonicalURL} property="og:url" />
     <meta content="website" property="og:type" />
     {
@@ -109,8 +112,6 @@ const description = Astro.props.description ?? starpodConfig.description;
     <meta property="og:site_name" content={show.title} />
 
     {socialImage && <link rel="preload" as="image" href={socialImage} />}
-
-    <Font cssVariable="--astro-font-inter" preload />
 
     <Schema
       slot="head"
@@ -212,23 +213,43 @@ const description = Astro.props.description ?? starpodConfig.description;
     >
       <div class="iqpod-gate__card">
         <p class="iqpod-gate__title">Enter PIN to continue</p>
-        <p class="iqpod-gate__hint">This view is restricted unless embedded on an allowed parent domain.</p>
-        <div class="iqpod-gate__row">
-          <input id="iqpod-gate-input" class="iqpod-gate__input" type="password" placeholder="PIN" />
-          <button id="iqpod-gate-button" class="iqpod-gate__button" type="button">Unlock</button>
+        <p class="iqpod-gate__hint">
+          This view is restricted unless embedded on an allowed parent domain.
+        </p>
+        <form id="iqpod-gate-form" class="iqpod-gate__row">
+          <input
+            id="iqpod-gate-input"
+            class="iqpod-gate__input"
+            type="password"
+            placeholder="PIN"
+            autocomplete="one-time-code"
+            inputmode="numeric"
+          />
+          <button
+            id="iqpod-gate-button"
+            class="iqpod-gate__button"
+            type="submit"
+          >
+            Unlock
+          </button>
+        </form>
+        <div id="iqpod-gate-error" class="iqpod-gate__error" hidden>
+          Invalid PIN
         </div>
-        <div id="iqpod-gate-error" class="iqpod-gate__error" hidden>Invalid PIN</div>
       </div>
     </div>
 
     <script is:inline>
       (() => {
         const gate = document.getElementById('iqpod-gate');
+        const gateForm = document.getElementById('iqpod-gate-form');
         const pinInput = document.getElementById('iqpod-gate-input');
         const unlockButton = document.getElementById('iqpod-gate-button');
         const errorText = document.getElementById('iqpod-gate-error');
 
-        if (!gate || !pinInput || !unlockButton || !errorText) return;
+        if (!gate || !gateForm || !pinInput || !unlockButton || !errorText) {
+          return;
+        }
 
         let config;
         try {
@@ -244,7 +265,9 @@ const description = Astro.props.description ?? starpodConfig.description;
             .toLowerCase()
             .match(/^(https?):\/\/([^/:]+)(?::(\d+))?$/);
 
-          if (!match) return false;
+          if (!match) {
+            return false;
+          }
 
           try {
             const parsedOrigin = new URL(origin);
@@ -349,9 +372,9 @@ const description = Astro.props.description ?? starpodConfig.description;
           hideGate();
         };
 
-        unlockButton.addEventListener('click', handleUnlock);
-        pinInput.addEventListener('keydown', (event) => {
-          if (event.key === 'Enter') handleUnlock();
+        gateForm.addEventListener('submit', (event) => {
+          event.preventDefault();
+          handleUnlock();
         });
       })();
     </script>
@@ -363,36 +386,36 @@ const description = Astro.props.description ?? starpodConfig.description;
       transition:persist="sidenav"
     >
       {showStaticSidebar && (
-      <div class="relative z-10 mx-auto lg:min-h-full lg:flex-auto">
-        <div
-          class="bg-light-card dark:bg-dark-card m-2 rounded-lg pt-10 pb-4 lg:pt-16 lg:pb-12"
-        >
-          <ShowArtwork image={show.image} />
+        <div class="relative z-10 mx-auto lg:min-h-full lg:flex-auto">
+          <div
+            class="bg-light-card dark:bg-dark-card m-2 rounded-lg pt-10 pb-4 lg:pt-16 lg:pb-12"
+          >
+            <ShowArtwork image={show.image} />
 
-          <div class="px-4 sm:px-6 md:px-4 lg:px-16">
-            <p
-              class="text-light-text-heading mt-8 text-center text-2xl font-bold lg:text-left dark:text-white"
-            >
-              {show.title}
-            </p>
+            <div class="px-4 sm:px-6 md:px-4 lg:px-16">
+              <p
+                class="text-light-text-heading mt-8 text-center text-2xl font-bold lg:text-left dark:text-white"
+              >
+                {show.title}
+              </p>
 
-            <p class="mt-2 text-center text-lg lg:text-left">
-              {starpodConfig.blurb}
-            </p>
+              <p class="mt-2 text-center text-lg lg:text-left">
+                {starpodConfig.blurb}
+              </p>
+            </div>
+
+            <div class="px-4 sm:px-6 md:px-4 lg:px-16">
+              <Platforms />
+            </div>
+            <div class="hidden lg:block">
+              <Hosts />
+            </div>
           </div>
 
-          <div class="px-4 sm:px-6 md:px-4 lg:px-16">
-            <Platforms />
-          </div>
           <div class="hidden lg:block">
-            <Hosts />
+            <InfoCard />
           </div>
         </div>
-
-        <div class="hidden lg:block">
-          <InfoCard />
-        </div>
-      </div>
       )}
     </header>
     <main
@@ -426,10 +449,10 @@ const description = Astro.props.description ?? starpodConfig.description;
       </div>
     </main>
     {showStaticSidebar && (
-    <footer class="block lg:hidden">
-      <Hosts />
-      <InfoCard />
-    </footer>
+      <footer class="block lg:hidden">
+        <Hosts />
+        <InfoCard />
+      </footer>
     )}
     <div id="audio-player">
       <Player client:only="preact" transition:persist="player" />
@@ -439,6 +462,5 @@ const description = Astro.props.description ?? starpodConfig.description;
       feed={feedQueryValue}
       transition:persist={searchDialogPersistKey}
     />
-    <SpeedInsights />
   </body>
 </html>

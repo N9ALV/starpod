@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
-import parseFeed from 'rss-to-json';
 
 import { getRequestedFeed, resolveFeedSource } from '../../lib/feed-source';
+import { getParsedFeed } from '../../lib/rss';
 
 export const prerender = false;
 
@@ -30,17 +30,7 @@ export const GET: APIRoute = async ({ request }) => {
   }
 
   try {
-    // Use parseFeed.parse to mirror existing usage in src/lib/rss.ts.
-    const parsed = await new Promise<any>((resolve, reject) => {
-      try {
-        // @ts-ignore
-        parseFeed.parse(feedSource.resolvedUrl, (err: any, data: any) =>
-          err ? reject(err) : resolve(data)
-        );
-      } catch (error) {
-        reject(error);
-      }
-    });
+    const parsed = await getParsedFeed(feedSource.resolvedUrl);
 
     return new Response(JSON.stringify(parsed), {
       status: 200,

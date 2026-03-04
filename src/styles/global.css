@@ -73,7 +73,7 @@ footer:has(+ #audio-player .player) {
 }
 
 .animated-bottom-border {
-  @apply dark:border-dark-border border-b after:block after:h-[1px] after:w-0 after:bg-gradient-to-r after:from-[#C6B2FF] after:to-[#8D67FF] after:transition-all after:duration-500 after:ease-in-out hover:after:w-full dark:after:from-[#43C9F5] dark:after:to-[#B4EDFF];
+  @apply dark:border-dark-border border-b after:block after:h-[1px] after:w-0 after:bg-gradient-to-r after:from-[#C7D8FF] after:to-[#4169E1] after:transition-all after:duration-500 after:ease-in-out hover:after:w-full dark:after:from-[#4169E1] dark:after:to-[#6B8DE8];
 }
 
 .input {
@@ -87,3 +87,5 @@ footer:has(+ #audio-player .player) {
 @utility section-heading-underlined {
   @apply section-heading dark:border-dark-border border-b pb-4;
 }
+
+

@@ -174,7 +174,7 @@ No configuration needed - it just works!
 
 ### Prerequisites
 
-- Node.js (version 18 or higher)
+- Node.js 22.x
 - pnpm package manager
 
 ### Installation
@@ -219,17 +219,34 @@ This includes both unit tests and end-to-end tests.
 
 ### Deployment
 
-Starpod is configured for deployment on Netlify with server-side rendering (SSR).
+Starpod is configured for Cloudflare Workers with Astro SSR.
 
-#### Netlify Deployment Steps
+#### Cloudflare Deployment Steps
 
-1. Push your code to a Git repository (e.g., GitHub, GitLab)
-2. Connect your repository to Netlify
-3. Configure the build settings:
-   - **Build command**: `pnpm run build`
-   - **Publish directory**: `dist`
-4. Add environment variables in Netlify's dashboard (see Environment Variables section below)
-5. Deploy!
+1. Load Cloudflare credentials with the standard helper from the management workspace:
+   `Cloudflare Management/ops/cloudflare-access-all.ps1 -Persist`
+2. Install dependencies with the repo-pinned package manager:
+   `pnpm install`
+3. Build the Worker bundle:
+   `pnpm run build`
+4. Deploy the Worker:
+   `pnpm run deploy:cloudflare`
+5. Attach or verify the custom domain in Cloudflare:
+   `iqpod.tradegpt.ai`
+
+The current production Worker also serves:
+
+- `https://starpod.a-b21.workers.dev`
+- `https://iqpod.tradegpt.ai`
+
+#### Cloudflare Notes
+
+- `wrangler.jsonc` intentionally uses a custom domain attachment instead of a `routes` block because the direct custom-domain flow worked reliably for this hostname.
+- `public/.assetsignore` excludes `_worker.js` from the static asset upload.
+- Vercel Speed Insights was removed from the live layout so Cloudflare no longer requests `/_vercel/...` assets that do not exist on this deployment.
+- The contact form now fails gracefully when `DISCORD_WEBHOOK` is unset instead of throwing at runtime.
+- The episode page links to transcript markdown instead of rendering the transcript inline. This keeps the Worker bundle under Cloudflare's size limit.
+- If `iqpod.tradegpt.ai` still points at an old Netlify DNS record, remove that record before attaching the custom domain in Cloudflare.
 
 #### Environment Variables
 

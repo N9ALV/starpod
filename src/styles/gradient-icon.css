@@ -37,9 +37,10 @@
   &:hover {
     --gradient-start: oklch(77.32% 0.129 294.81);
     --gradient-stop: oklch(67.59% 0.18851878808119876 292.4954219580293);
+
     @media (prefers-color-scheme: dark) {
-      --gradient-start: oklch(88.52% 0.079 220.53);
-      --gradient-stop: oklch(78.86% 0.125 223.67);
+      --gradient-start: #4169e1;
+      --gradient-stop: #6b8de8;
     }
   }
 }
