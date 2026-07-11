@@ -2,6 +2,7 @@ import starpodConfig from '../../starpod.config';
 
 const BUZZSPROUT_HOST = 'feeds.buzzsprout.com';
 const FLIGHTCAST_HOST = 'rss.flightcast.com';
+const IQPOD_PUBLIC_BASE = '/iq/app/iqpod';
 const KNOWN_PODCAST_HOST_PATTERNS = [
   'anchor.fm',
   'podcasters.spotify.com',
@@ -39,9 +40,8 @@ export interface FeedSourceResolution {
 
 function getEnvironmentValue(name: string) {
   return (
-    (import.meta as ImportMeta & { env?: Record<string, string | undefined> })
-      .env?.[name]
-  );
+    import.meta as ImportMeta & { env?: Record<string, string | undefined> }
+  ).env?.[name];
 }
 
 function normalizeUrl(value: string): string | undefined {
@@ -111,9 +111,7 @@ function getFeedAliases() {
     aliases.set('buzzsprout', getDefaultFeedUrl());
   }
 
-  const aliasesFromEnv = parseList(
-    getEnvironmentValue('FEED_SOURCE_ALIASES')
-  );
+  const aliasesFromEnv = parseList(getEnvironmentValue('FEED_SOURCE_ALIASES'));
 
   for (const entry of aliasesFromEnv) {
     const [name, url] = entry.split('=');
@@ -259,4 +257,25 @@ export function withFeedQuery(pathname: string, feedQueryValue?: string) {
   url.searchParams.set('feed', feedQueryValue);
 
   return `${url.pathname}${url.search}${url.hash}`;
+}
+
+export function withIqPodPublicBase(
+  pathname: string,
+  currentPathname = typeof window === 'undefined'
+    ? ''
+    : window.location.pathname
+) {
+  if (
+    !pathname.startsWith('/') ||
+    pathname === IQPOD_PUBLIC_BASE ||
+    pathname.startsWith(`${IQPOD_PUBLIC_BASE}/`)
+  ) {
+    return pathname;
+  }
+
+  const isMounted =
+    currentPathname === IQPOD_PUBLIC_BASE ||
+    currentPathname.startsWith(`${IQPOD_PUBLIC_BASE}/`);
+
+  return isMounted ? `${IQPOD_PUBLIC_BASE}${pathname}` : pathname;
 }

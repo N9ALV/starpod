@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
   getRequestedFeed,
   resolveFeedSource,
-  withFeedQuery
+  withFeedQuery,
+  withIqPodPublicBase
 } from '../../src/lib/feed-source';
 
 describe('feed-source helpers', () => {
@@ -24,9 +25,7 @@ describe('feed-source helpers', () => {
     expect(result.isValid).toBe(true);
     expect(result.isDefault).toBe(false);
     expect(result.queryValue).toBe('buzzsprout/1410787');
-    expect(result.resolvedUrl).toBe(
-      'https://feeds.buzzsprout.com/1410787.rss'
-    );
+    expect(result.resolvedUrl).toBe('https://feeds.buzzsprout.com/1410787.rss');
   });
 
   it('normalizes raw host-and-path feed requests', () => {
@@ -75,9 +74,9 @@ describe('feed-source helpers', () => {
   });
 
   it('preserves feed queries when building episode and api links', () => {
-    expect(withFeedQuery('/api/episodes/search.json', 'buzzsprout/1410787')).toBe(
-      '/api/episodes/search.json?feed=buzzsprout%2F1410787'
-    );
+    expect(
+      withFeedQuery('/api/episodes/search.json', 'buzzsprout/1410787')
+    ).toBe('/api/episodes/search.json?feed=buzzsprout%2F1410787');
     expect(withFeedQuery('/test-episode?show=true', 'flightcast')).toBe(
       '/test-episode?show=true&feed=flightcast'
     );
@@ -90,5 +89,26 @@ describe('feed-source helpers', () => {
     });
 
     expect(getRequestedFeed(searchParams)).toBe('flightcast');
+  });
+
+  it('keeps direct-origin paths unchanged', () => {
+    expect(withIqPodPublicBase('/api/episodes/search.json', '/')).toBe(
+      '/api/episodes/search.json'
+    );
+  });
+
+  it('prefixes client paths when IQPod is mounted under the canonical route', () => {
+    expect(
+      withIqPodPublicBase(
+        '/api/episodes/search.json',
+        '/iq/app/iqpod/episode-one'
+      )
+    ).toBe('/iq/app/iqpod/api/episodes/search.json');
+    expect(withIqPodPublicBase('/episode-one', '/iq/app/iqpod')).toBe(
+      '/iq/app/iqpod/episode-one'
+    );
+    expect(
+      withIqPodPublicBase('/iq/app/iqpod/episode-one', '/iq/app/iqpod')
+    ).toBe('/iq/app/iqpod/episode-one');
   });
 });

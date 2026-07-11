@@ -1,7 +1,7 @@
 import type { JSX } from 'preact/jsx-runtime';
 import { useEffect, useState, useRef, useCallback } from 'preact/hooks';
 import { isSearchOpen } from './state';
-import { withFeedQuery } from '../lib/feed-source';
+import { withFeedQuery, withIqPodPublicBase } from '../lib/feed-source';
 import type { Episode } from '../lib/rss';
 
 type SearchDialogProps = {
@@ -24,9 +24,12 @@ export default function SearchDialog({ feed }: SearchDialogProps) {
     setFilteredEpisodes([]);
     setSelectedIndex(0);
 
-    fetch(withFeedQuery('/api/episodes/search.json', feed), {
-      signal: abortController.signal
-    })
+    fetch(
+      withFeedQuery(withIqPodPublicBase('/api/episodes/search.json'), feed),
+      {
+        signal: abortController.signal
+      }
+    )
       .then((res) => {
         if (!res.ok) {
           throw new Error(`Failed to load search episodes: ${res.status}`);
@@ -49,7 +52,8 @@ export default function SearchDialog({ feed }: SearchDialogProps) {
   }, [feed]);
 
   const getEpisodeHref = useCallback(
-    (episodeSlug: string) => withFeedQuery(`/${episodeSlug}`, feed),
+    (episodeSlug: string) =>
+      withFeedQuery(withIqPodPublicBase(`/${episodeSlug}`), feed),
     [feed]
   );
 
@@ -152,23 +156,23 @@ export default function SearchDialog({ feed }: SearchDialogProps) {
 
   return (
     <div
-      class="fixed inset-0 z-[100] flex items-start justify-center bg-black/50 backdrop-blur-sm pt-[10vh]"
+      class="fixed inset-0 z-[100] flex items-start justify-center bg-black/50 pt-[10vh] backdrop-blur-sm"
       onClick={handleBackdropClick}
       role="dialog"
       aria-modal="true"
       aria-label="Search episodes"
     >
-      <div class="bg-light-card dark:bg-dark-card w-full max-w-xl mx-4 rounded-lg shadow-2xl border border-light-input-border dark:border-dark-border overflow-hidden">
+      <div class="bg-light-card dark:bg-dark-card border-light-input-border dark:border-dark-border mx-4 w-full max-w-xl overflow-hidden rounded-lg border shadow-2xl">
         {/* Search Input */}
-        <div class="flex items-center border-b border-light-input-border dark:border-dark-border px-4">
+        <div class="border-light-input-border dark:border-dark-border flex items-center border-b px-4">
           <span
-            class="search-icon h-5 w-5 text-light-icon dark:text-dark-icon shrink-0"
+            class="search-icon text-light-icon dark:text-dark-icon h-5 w-5 shrink-0"
             aria-hidden="true"
           />
           <input
             ref={inputRef}
             type="text"
-            class="flex-1 bg-transparent px-4 py-4 text-light-text-heading dark:text-white placeholder-light-text-body dark:placeholder-dark-text-body outline-none border-none focus:ring-0"
+            class="text-light-text-heading placeholder-light-text-body dark:placeholder-dark-text-body flex-1 border-none bg-transparent px-4 py-4 outline-none focus:ring-0 dark:text-white"
             placeholder="Search episodes..."
             value={query}
             onInput={(e) => setQuery((e.target as HTMLInputElement).value)}
@@ -176,7 +180,7 @@ export default function SearchDialog({ feed }: SearchDialogProps) {
             aria-autocomplete="list"
             aria-controls="search-results"
           />
-          <kbd class="hidden sm:inline-flex items-center gap-1 px-2 py-1 text-xs text-light-text-body dark:text-dark-text-body bg-light-input-bg dark:bg-dark-input-bg rounded border border-light-input-border dark:border-dark-input-border">
+          <kbd class="text-light-text-body dark:text-dark-text-body bg-light-input-bg dark:bg-dark-input-bg border-light-input-border dark:border-dark-input-border hidden items-center gap-1 rounded border px-2 py-1 text-xs sm:inline-flex">
             <span class="text-xs">ESC</span>
           </kbd>
         </div>
@@ -189,7 +193,7 @@ export default function SearchDialog({ feed }: SearchDialogProps) {
           role="listbox"
         >
           {filteredEpisodes.length === 0 ? (
-            <div class="p-4 text-center text-light-text-body dark:text-dark-text-body">
+            <div class="text-light-text-body dark:text-dark-text-body p-4 text-center">
               {query
                 ? 'No episodes found'
                 : 'Start typing to search episodes...'}
@@ -200,7 +204,7 @@ export default function SearchDialog({ feed }: SearchDialogProps) {
                 key={episode.id}
                 href={getEpisodeHref(episode.episodeSlug)}
                 data-index={index}
-                class={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
+                class={`flex cursor-pointer items-center gap-3 rounded-lg p-3 transition-colors ${
                   index === selectedIndex
                     ? 'bg-light-input-bg dark:bg-dark-input-bg'
                     : 'hover:bg-light-input-bg dark:hover:bg-dark-input-bg'
@@ -209,21 +213,21 @@ export default function SearchDialog({ feed }: SearchDialogProps) {
                 aria-selected={index === selectedIndex}
                 onClick={() => (isSearchOpen.value = false)}
               >
-                <div class="flex-1 min-w-0">
+                <div class="min-w-0 flex-1">
                   <div class="flex items-center gap-2">
-                    <span class="text-xs font-medium text-light-icon dark:text-dark-icon">
+                    <span class="text-light-icon dark:text-dark-icon text-xs font-medium">
                       #{episode.episodeNumber}
                     </span>
-                    <span class="text-sm font-semibold text-light-text-heading dark:text-white truncate">
+                    <span class="text-light-text-heading truncate text-sm font-semibold dark:text-white">
                       {episode.title}
                     </span>
                   </div>
-                  <p class="text-xs text-light-text-body dark:text-dark-text-body truncate mt-1">
+                  <p class="text-light-text-body dark:text-dark-text-body mt-1 truncate text-xs">
                     {episode.description}
                   </p>
                 </div>
                 {index === selectedIndex && (
-                  <kbd class="hidden sm:inline-flex items-center px-2 py-1 text-xs text-light-text-body dark:text-dark-text-body bg-light-card dark:bg-dark-card rounded border border-light-input-border dark:border-dark-input-border">
+                  <kbd class="text-light-text-body dark:text-dark-text-body bg-light-card dark:bg-dark-card border-light-input-border dark:border-dark-input-border hidden items-center rounded border px-2 py-1 text-xs sm:inline-flex">
                     ↵
                   </kbd>
                 )}
@@ -233,19 +237,19 @@ export default function SearchDialog({ feed }: SearchDialogProps) {
         </div>
 
         {/* Footer */}
-        <div class="flex items-center justify-between px-4 py-2 border-t border-light-input-border dark:border-dark-border text-xs text-light-text-body dark:text-dark-text-body">
+        <div class="border-light-input-border dark:border-dark-border text-light-text-body dark:text-dark-text-body flex items-center justify-between border-t px-4 py-2 text-xs">
           <div class="flex items-center gap-4">
-            <span class="hidden sm:inline-flex items-center gap-1">
-              <kbd class="px-1.5 py-0.5 bg-light-input-bg dark:bg-dark-input-bg rounded border border-light-input-border dark:border-dark-input-border">
+            <span class="hidden items-center gap-1 sm:inline-flex">
+              <kbd class="bg-light-input-bg dark:bg-dark-input-bg border-light-input-border dark:border-dark-input-border rounded border px-1.5 py-0.5">
                 ↑
               </kbd>
-              <kbd class="px-1.5 py-0.5 bg-light-input-bg dark:bg-dark-input-bg rounded border border-light-input-border dark:border-dark-input-border">
+              <kbd class="bg-light-input-bg dark:bg-dark-input-bg border-light-input-border dark:border-dark-input-border rounded border px-1.5 py-0.5">
                 ↓
               </kbd>
               <span>to navigate</span>
             </span>
-            <span class="hidden sm:inline-flex items-center gap-1">
-              <kbd class="px-1.5 py-0.5 bg-light-input-bg dark:bg-dark-input-bg rounded border border-light-input-border dark:border-dark-input-border">
+            <span class="hidden items-center gap-1 sm:inline-flex">
+              <kbd class="bg-light-input-bg dark:bg-dark-input-bg border-light-input-border dark:border-dark-input-border rounded border px-1.5 py-0.5">
                 ↵
               </kbd>
               <span>to select</span>
