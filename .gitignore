@@ -2,6 +2,7 @@
 .vercel/
 .netlify/
 .wrangler/
+.wrangler-dry-run/
 dist/
 
 # generated types

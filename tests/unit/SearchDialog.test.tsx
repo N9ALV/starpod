@@ -35,6 +35,8 @@ describe('SearchDialog', () => {
   beforeEach(() => {
     isSearchOpen.value = false;
     global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
       json: () => Promise.resolve(mockEpisodes)
     });
   });

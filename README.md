@@ -221,6 +221,15 @@ This includes both unit tests and end-to-end tests.
 
 Starpod is configured for Cloudflare Workers with Astro SSR.
 
+#### IQ Suite Access And Ownership
+
+- The member-facing URL is `https://iu.com.au/iq/app/iqpod`.
+- `N9ALV/IU-Members-subsite` owns WordPress member identity and the Vault access decision.
+- `N9ALV/iq-app-router` owns the canonical `/iq/app/iqpod` route and proxies this Worker origin.
+- This repository owns IQPod application behaviour and the `starpod` Worker deployment.
+- IQPod does not implement a separate PIN, premium tier, or client-side authentication gate. The direct origin remains a deployment and diagnostic surface; the canonical IU route is the product surface.
+- GitHub Actions is not part of production deployment. Production is built locally and deployed with Wrangler after the suite checks pass.
+
 #### Cloudflare Deployment Steps
 
 1. Load Cloudflare credentials with the standard helper from the management workspace:
@@ -242,6 +251,7 @@ The current production Worker also serves:
 #### Cloudflare Notes
 
 - `wrangler.jsonc` intentionally uses a custom domain attachment instead of a `routes` block because the direct custom-domain flow worked reliably for this hostname.
+- The Cloudflare Worker service is named `starpod`; the IQ suite product name and route slug are `IQPod` and `iqpod`.
 - `public/.assetsignore` excludes `_worker.js` from the static asset upload.
 - Vercel Speed Insights was removed from the live layout so Cloudflare no longer requests `/_vercel/...` assets that do not exist on this deployment.
 - The contact form now fails gracefully when `DISCORD_WEBHOOK` is unset instead of throwing at runtime.

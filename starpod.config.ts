@@ -1,4 +1,4 @@
-import { defineStarpodConfig } from 'src/utils/config';
+import { defineStarpodConfig } from './src/utils/config';
 
 export default defineStarpodConfig({
   blurb:

@@ -6,7 +6,14 @@ export default [
   js.configs.recommended,
   ...eslintPluginAstro.configs.recommended,
   {
-    ignores: ['.astro/**', '.vercel/**', 'dist/**', 'node_modules/**']
+    ignores: [
+      '.astro/**',
+      '.netlify/**',
+      '.vercel/**',
+      '.wrangler/**',
+      'dist/**',
+      'node_modules/**'
+    ]
   },
   {
     languageOptions: {

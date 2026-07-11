@@ -12,7 +12,6 @@ import SearchButton from '../components/SearchButton';
 import SearchDialog from '../components/SearchDialog';
 import ShowArtwork from '../components/ShowArtwork.astro';
 
-import { getEmbedGateConfig } from '../lib/embed-gate';
 import { getShowInfo } from '../lib/rss';
 import type { Show } from '../lib/rss';
 import starpodConfig from 'starpod.config';
@@ -40,7 +39,6 @@ const { feedQueryValue, feedUrl, imageUrl, show: providedShow, title } =
 const show = providedShow ?? (await getShowInfo(feedUrl));
 const currentFeedUrl = feedUrl ?? starpodConfig.rssFeed;
 const socialImage = imageUrl ?? show.image;
-const embedGateConfig = getEmbedGateConfig();
 const searchDialogPersistKey = feedQueryValue
   ? `search-dialog:${encodeURIComponent(feedQueryValue)}`
   : 'search-dialog:default';
@@ -137,248 +135,12 @@ const description = Astro.props.description ?? starpodConfig.description;
       }}
     />
 
-    <style is:inline>
-      .iqpod-gate {
-        position: fixed;
-        inset: 0;
-        z-index: 9999;
-        display: none;
-        align-items: center;
-        justify-content: center;
-        background: rgba(0, 0, 0, 0.72);
-        backdrop-filter: blur(4px);
-        padding: 1rem;
-      }
-      .iqpod-gate__card {
-        width: min(420px, 100%);
-        border-radius: 12px;
-        border: 1px solid rgba(255, 255, 255, 0.14);
-        background: #0f1426;
-        color: #e8ecff;
-        padding: 1rem;
-      }
-      .iqpod-gate__title {
-        margin: 0 0 0.5rem;
-        font-weight: 700;
-        font-size: 1rem;
-      }
-      .iqpod-gate__hint {
-        margin: 0 0 0.75rem;
-        color: #b7c0e6;
-        font-size: 0.9rem;
-      }
-      .iqpod-gate__row {
-        display: flex;
-        gap: 0.5rem;
-      }
-      .iqpod-gate__input {
-        flex: 1;
-        min-width: 0;
-        border: 1px solid #2a3451;
-        background: #0a1022;
-        color: #e8ecff;
-        border-radius: 8px;
-        padding: 0.55rem 0.7rem;
-      }
-      .iqpod-gate__button {
-        border: 0;
-        border-radius: 8px;
-        background: #5f7cd4;
-        color: #fff;
-        font-weight: 600;
-        padding: 0.55rem 0.85rem;
-        cursor: pointer;
-      }
-      .iqpod-gate__error {
-        margin-top: 0.55rem;
-        color: #ffb4b4;
-        font-size: 0.82rem;
-      }
-    </style>
-
     <slot name="head" />
     <ClientRouter />
   </head>
   <body
     class="font-inter text-light-text-body dark:bg-dark-background dark:text-dark-text-body antialiased"
   >
-    <div
-      id="iqpod-gate"
-      class="iqpod-gate"
-      aria-live="polite"
-      aria-modal="true"
-      data-config={JSON.stringify(embedGateConfig)}
-      hidden
-      role="dialog"
-    >
-      <div class="iqpod-gate__card">
-        <p class="iqpod-gate__title">Enter PIN to continue</p>
-        <p class="iqpod-gate__hint">
-          This view is restricted unless embedded on an allowed parent domain.
-        </p>
-        <form id="iqpod-gate-form" class="iqpod-gate__row">
-          <input
-            id="iqpod-gate-input"
-            class="iqpod-gate__input"
-            type="password"
-            placeholder="PIN"
-            autocomplete="one-time-code"
-            inputmode="numeric"
-          />
-          <button
-            id="iqpod-gate-button"
-            class="iqpod-gate__button"
-            type="submit"
-          >
-            Unlock
-          </button>
-        </form>
-        <div id="iqpod-gate-error" class="iqpod-gate__error" hidden>
-          Invalid PIN
-        </div>
-      </div>
-    </div>
-
-    <script is:inline>
-      (() => {
-        const gate = document.getElementById('iqpod-gate');
-        const gateForm = document.getElementById('iqpod-gate-form');
-        const pinInput = document.getElementById('iqpod-gate-input');
-        const unlockButton = document.getElementById('iqpod-gate-button');
-        const errorText = document.getElementById('iqpod-gate-error');
-
-        if (!gate || !gateForm || !pinInput || !unlockButton || !errorText) {
-          return;
-        }
-
-        let config;
-        try {
-          config = JSON.parse(gate.dataset.config || '{}');
-        } catch {
-          gate.hidden = true;
-          return;
-        }
-
-        const matchesOriginPattern = (origin, pattern) => {
-          const match = pattern
-            .trim()
-            .toLowerCase()
-            .match(/^(https?):\/\/([^/:]+)(?::(\d+))?$/);
-
-          if (!match) {
-            return false;
-          }
-
-          try {
-            const parsedOrigin = new URL(origin);
-            const hostname = parsedOrigin.hostname.toLowerCase();
-            const hostnamePattern = match[2];
-            const expectedPort = match[3] || '';
-
-            if (parsedOrigin.protocol.toLowerCase() !== `${match[1]}:`) {
-              return false;
-            }
-
-            if (expectedPort && parsedOrigin.port !== expectedPort) {
-              return false;
-            }
-
-            if (!expectedPort && parsedOrigin.port) {
-              return false;
-            }
-
-            if (hostnamePattern.startsWith('*.')) {
-              const suffix = hostnamePattern.slice(1);
-              return hostname.endsWith(suffix) && hostname !== suffix.slice(1);
-            }
-
-            return hostname === hostnamePattern;
-          } catch {
-            return false;
-          }
-        };
-
-        const hideGate = () => {
-          gate.hidden = true;
-          gate.style.display = 'none';
-          errorText.hidden = true;
-          pinInput.value = '';
-        };
-
-        const showGate = () => {
-          gate.hidden = false;
-          gate.style.display = 'flex';
-        };
-
-        const isUnlocked = () => {
-          try {
-            return window.localStorage.getItem(config.storageKey) === 'true';
-          } catch {
-            return false;
-          }
-        };
-
-        const getAllowedParentOrigin = () => {
-          const candidates = [];
-          if (document.referrer) {
-            try {
-              candidates.push(new URL(document.referrer).origin);
-            } catch {}
-          }
-          const ancestorOrigins = window.location.ancestorOrigins;
-          if (ancestorOrigins && ancestorOrigins.length) {
-            for (let i = 0; i < ancestorOrigins.length; i += 1) {
-              candidates.push(ancestorOrigins[i]);
-            }
-          }
-          for (const origin of candidates) {
-            if (
-              Array.isArray(config.allowedParents) &&
-              config.allowedParents.some((pattern) =>
-                matchesOriginPattern(origin, pattern)
-              )
-            ) {
-              return origin;
-            }
-          }
-          return null;
-        };
-
-        const inIframe = window.self !== window.top;
-        const unlocked = isUnlocked();
-        const allowedParent = inIframe ? getAllowedParentOrigin() : null;
-        const requiresGate =
-          Boolean(config.enabled) &&
-          !unlocked &&
-          (inIframe ? !allowedParent : !config.allowTopLevel);
-
-        if (!requiresGate) {
-          hideGate();
-          return;
-        }
-
-        showGate();
-
-        const handleUnlock = () => {
-          if (pinInput.value.trim() !== config.pinCode) {
-            errorText.hidden = false;
-            return;
-          }
-          try {
-            window.localStorage.setItem(config.storageKey, 'true');
-          } catch {
-            // Ignore storage failures and still allow the current session through.
-          }
-          hideGate();
-        };
-
-        gateForm.addEventListener('submit', (event) => {
-          event.preventDefault();
-          handleUnlock();
-        });
-      })();
-    </script>
-
     <header
       class={showStaticSidebar
         ? 'custom-scrollbar lg:fixed lg:inset-y-0 lg:left-0 lg:flex lg:w-112 lg:items-start lg:overflow-y-auto xl:w-120'
