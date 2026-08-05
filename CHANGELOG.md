@@ -2,6 +2,14 @@
 
 USE DIRECT ACCESS INSTRUCTIONS PER POLICY: C:\Users\adam\Zoho WorkDrive (ML)\My Folders\OneDrive\Desktop\AWS + CF Management\docs\ACCESS-NOW.md
 
+## 2026-08-06 — Vault origin boundary
+
+- Added Astro middleware requiring `IQPOD_ORIGIN_TOKEN` for app-router delivery.
+- Direct top-level visits preserve path and query in a `302` to
+  `https://iu.com.au/iq/app/iqpod`; direct subresources return `404`.
+- Kept WordPress/Vault as the member identity and access owner. IQPod does not
+  add a PIN, duplicate login or client-side entitlement check.
+
 ## 2026-03-02 — Feed & Panel Fixes Walkthrough
 
 **Changes Made (6 files on GitHub main):**

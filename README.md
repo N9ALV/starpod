@@ -224,10 +224,15 @@ Starpod is configured for Cloudflare Workers with Astro SSR.
 #### IQ Suite Access And Ownership
 
 - The member-facing URL is `https://iu.com.au/iq/app/iqpod`.
-- `N9ALV/IU-Members-subsite` owns WordPress member identity and the Vault access decision.
+- `N9ALV/iq-vault` owns the Vault access decision; WordPress remains the normal
+  member identity and password authority.
 - `N9ALV/iq-app-router` owns the canonical `/iq/app/iqpod` route and proxies this Worker origin.
 - This repository owns IQPod application behaviour and the `starpod` Worker deployment.
-- IQPod does not implement a separate PIN, premium tier, or client-side authentication gate. The direct origin remains a deployment and diagnostic surface; the canonical IU route is the product surface.
+- IQPod does not implement a separate PIN, premium tier, or client-side
+  authentication gate. The canonical IU route is the product surface. The
+  direct Worker hostname is protected delivery infrastructure: top-level
+  navigation redirects to the matching canonical route, while assets and other
+  non-document requests require the app router's server credential.
 - GitHub Actions is not part of production deployment. Production is built locally and deployed with Wrangler after the suite checks pass.
 
 #### Cloudflare Deployment Steps
