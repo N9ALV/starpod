@@ -1,8 +1,17 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { canonicalIqPodLocation, enforceIqPodOrigin } from '../../src/lib/origin-gate';
 
 describe('IQPod origin gate', () => {
+  it('runs the Worker before Cloudflare static asset delivery', () => {
+    const config = JSON.parse(
+      readFileSync(join(process.cwd(), 'wrangler.jsonc'), 'utf8'),
+    ) as { assets?: { run_worker_first?: boolean } };
+    expect(config.assets?.run_worker_first).toBe(true);
+  });
+
   it('redirects direct document navigation to the canonical IU route', async () => {
     const request = new Request('https://iqpod.tradegpt.ai/episode-one?feed=a&feed=b&zero=0', {
       headers: {

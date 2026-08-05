@@ -32,6 +32,8 @@ GitHub Actions is not a production deployment mechanism for this app. Do not rei
 - Application source belongs in `src/`.
 - Static assets belong in `public/`.
 - Cloudflare deployment configuration belongs in `wrangler.jsonc`.
+- Keep `assets.run_worker_first=true`; otherwise Cloudflare serves matching
+  static files before the protected-origin middleware runs.
 - Do not commit `dist/`, `.netlify/`, `.wrangler/`, `.astro/`, or `node_modules/`.
 - Keep the upstream Starpod attribution and licence intact while documenting IQ-specific ownership separately.
 
