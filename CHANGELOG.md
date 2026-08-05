@@ -7,6 +7,9 @@ USE DIRECT ACCESS INSTRUCTIONS PER POLICY: C:\Users\adam\Zoho WorkDrive (ML)\My 
 - Added Astro middleware requiring `IQPOD_ORIGIN_TOKEN` for app-router delivery.
 - Set Cloudflare Assets `run_worker_first=true` so images, scripts and other
   static files cannot bypass that middleware.
+- Added `src/worker.ts` as the outer Worker entry. Astro's generated adapter
+  serves matched `ASSETS` before Astro middleware, so the outer entry enforces
+  the credential before delegating to either Astro pages or static assets.
 - Direct top-level visits preserve path and query in a `302` to
   `https://iu.com.au/iq/app/iqpod`; direct subresources return `404`.
 - Kept WordPress/Vault as the member identity and access owner. IQPod does not

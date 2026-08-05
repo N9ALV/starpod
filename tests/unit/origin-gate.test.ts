@@ -8,7 +8,8 @@ describe('IQPod origin gate', () => {
   it('runs the Worker before Cloudflare static asset delivery', () => {
     const config = JSON.parse(
       readFileSync(join(process.cwd(), 'wrangler.jsonc'), 'utf8'),
-    ) as { assets?: { run_worker_first?: boolean } };
+    ) as { main?: string; assets?: { run_worker_first?: boolean } };
+    expect(config.main).toBe('./src/worker.ts');
     expect(config.assets?.run_worker_first).toBe(true);
   });
 

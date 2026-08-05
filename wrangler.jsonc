@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "starpod",
-  "main": "./dist/_worker.js/index.js",
+  "main": "./src/worker.ts",
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
